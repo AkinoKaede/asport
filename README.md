@@ -57,7 +57,6 @@ This repository contains the following crates:
 
 - [ ] Better documentation.
 - [ ] Mock tests.
-- [ ] [PROXY protocol](https://www.haproxy.org/download/2.4/doc/proxy-protocol.txt) for `asport-server`.
 
 ### Long-term Goals
 
