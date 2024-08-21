@@ -1,6 +1,6 @@
 [package]
 name = "asport-client"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "A simple Asport client implementation."
 categories = ["network-programming"]
@@ -13,8 +13,8 @@ repository = "https://github.com/AkinoKaede/asport"
 [dependencies]
 asport = { path = "../asport", version = "0.1.0" }
 asport-quinn = { path = "../asport-quinn", version = "0.1.0" }
-bytes = { version = "1.6.1", default-features = false, features = ["std"] }
-clap = { version = "4.5.8", default-features = false, features = ["color", "derive", "error-context", "help", "std", "suggestions", "usage"] }
+bytes = { version = "1.7.1", default-features = false, features = ["std"] }
+clap = { version = "4.5.16", default-features = false, features = ["color", "derive", "error-context", "help", "std", "suggestions", "usage"] }
 config = { version = "0.14.0", default-features = false, features = ["async", "convert-case", "json", "json5", "ron", "toml", "yaml"] }
 crossbeam-utils = { version = "0.8.20", default-features = false, features = ["std"] }
 env_logger = { version = "0.10.2", default-features = false, features = ["auto-color", "humantime"] }
@@ -25,13 +25,13 @@ parking_lot = { version = "0.12.3", default-features = false, features = ["send_
 ppp = { version = "2.2.0", default-features = false }
 quinn = { version = "0.11.2", default-features = false, features = ["futures-io", "runtime-tokio", "rustls"] }
 register-count = { version = "0.1.0", default-features = false, features = ["std"] }
-rustls = { version = "0.23.11", default-features = false }
+rustls = { version = "0.23.12", default-features = false }
 rustls-native-certs = { version = "0.7.1", default-features = false }
 rustls-pemfile = { version = "2.1.2", default-features = false }
-serde = { version = "1.0.204", default-features = false, features = ["derive", "std"] }
+serde = { version = "1.0.208", default-features = false, features = ["derive", "std"] }
 socket2 = { version = "0.5.7", default-features = false }
-thiserror = { version = "1.0.62", default-features = false }
-tokio = { version = "1.38.0", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
+thiserror = { version = "1.0.63", default-features = false }
+tokio = { version = "1.39.3", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
 tokio-util = { version = "0.7.11", default-features = false, features = ["compat"] }
 uuid = { version = "1.10.0", default-features = false, features = ["serde", "std"] }
 

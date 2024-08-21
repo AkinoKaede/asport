@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "asport-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "asport",
  "asport-quinn",
@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "asport-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "asport",
  "asport-quinn",
