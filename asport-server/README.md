@@ -2,6 +2,9 @@
 
 A simple Asport server implementation.
 
+[![Version](https://img.shields.io/crates/v/asport-server.svg?style=flat)](https://crates.io/crates/asport-server)
+[![License](https://img.shields.io/crates/l/asport-server.svg?style=flat)](https://github.com/AkinoKaede/asport/blob/main/LICENSE)
+
 ## Overview
 
 This crate provides a minimal Asport server implementation in Rust. It is designed to be a reference for the ASPORT protocol server implementation.

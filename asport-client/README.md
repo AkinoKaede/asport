@@ -2,6 +2,9 @@
 
 A simple Asport client implementation.
 
+[![Version](https://img.shields.io/crates/v/asport-client.svg?style=flat)](https://crates.io/crates/asport-client)
+[![License](https://img.shields.io/crates/l/asport-client.svg?style=flat)](https://github.com/AkinoKaede/asport/blob/main/LICENSE)
+
 ## Overview
 
 This crate provides a minimal Asport client implementation in Rust. It is designed to be a reference for the ASPORT protocol client implementation.

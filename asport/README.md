@@ -2,6 +2,10 @@
 
 An implementation of ASPORT protocol.
 
+[![Version](https://img.shields.io/crates/v/asport.svg?style=flat)](https://crates.io/crates/asport)
+[![Documentation](https://img.shields.io/badge/docs-release-brightgreen.svg?style=flat)](https://docs.rs/asport)
+[![License](https://img.shields.io/crates/l/asport.svg?style=flat)](https://github.com/AkinoKaede/asport/blob/main/LICENSE)
+
 ## Overview
 
 The ASPORT protocol specification can be found in [SPEC.md](https://github.com/AkinoKaede/asport/blob/main/SPEC.md). This crate provides an implementation of the ASPORT protocol in Rust as a reference.

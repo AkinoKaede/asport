@@ -2,6 +2,10 @@
 
 A wrapped [quinn](https://github.com/quinn-rs/quinn) to implement ASPORT protocol.
 
+[![Version](https://img.shields.io/crates/v/asport-quinn.svg?style=flat)](https://crates.io/crates/asport-quinn)
+[![Documentation](https://img.shields.io/badge/docs-release-brightgreen.svg?style=flat)](https://docs.rs/asport-quinn)
+[![License](https://img.shields.io/crates/l/asport-quinn.svg?style=flat)](https://github.com/AkinoKaede/asport/blob/main/LICENSE)
+
 ## Overview
 
 This crate provides a wrapper [`Connection`](https://docs.rs/asport-quinn/latest/asport_quinn/struct.Connection.html) around [`quinn::Connection`](https://docs.rs/quinn/latest/quinn/struct.Connection.html).
