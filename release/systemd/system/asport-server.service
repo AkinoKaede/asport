@@ -1,0 +1,18 @@
+[Unit]
+Description=Asport Server
+Documentation=https://github.com/AkinoKaede/asport
+After=network-online.target
+
+[Service]
+User=asport
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/usr/local/bin/asport-server --config /usr/local/etc/asport/server.toml
+Restart=on-failure
+RestartPreventExitStatus=23
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

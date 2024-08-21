@@ -1,0 +1,58 @@
+# Asport Server Quick-start Configuration
+
+# Listen address.
+# Format: <ip>:<port>
+# Note: If you want to listen on localhost, use "[::1]:443".
+# Port 443 may be blocked by some ISPs. You can use other ports such as 4443.
+server = "[::]:443"
+
+# Path to the certificate file.
+# Note: DER and PEM format are supported.
+# You can use acme.sh to get a free certificate.
+# See also: https://acme.sh
+certificate = "path/to/cert.pem"
+
+# Path to the private key file.
+# Note: DER and PEM format are supported.
+private_key = "path/to/key.pem"
+
+# Congestion control algorithm.
+# Default: "cubic"
+# Options: "cubic", "reno", "bbr"
+# Note: BBR may incrase transmission rate.
+congestion_control = "bbr"
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Format: ["<protocol-1>", "<protocol-2>", ...]
+# Note: Set it to ["h3"] if you want to bypass some DPI. And you should also change the client's ALPN to ["h3"].
+alpn = ["h3"]
+
+# Authentication failed reply.
+# Default: true
+# Note: Set it to true for hiding your server from probing.
+authentication_failed_reply = false
+
+# Log level.
+# Default: "warn"
+# Options: "trace", "debug", "info", "warn", "error", "off"
+# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
+log_level = "warn"
+
+# Reverse proxies configuration.
+# Note: Multiple proxies are supported.
+[[proxies]]
+
+# Allow ports.
+# Note: If you want to allow all ports, you can set it to { start = 1, end = 65535 }.
+# See more details in full exmaple configuration.
+allow_ports = { start = 1, end = 63335 }
+
+# Users configuration.
+# Format: <uuid> = "<password>"
+# Note: UUID must be unique in all proxies.
+# You can use `uuidgen` tools to generate a UUID.
+# The example UUID and password are only examples. You MUST replace them with your own UUID and password.
+[proxies.users]
+00000000-0000-0000-0000-000000000000 = "password"
+00000000-0000-0000-0000-000000000001 = "password"

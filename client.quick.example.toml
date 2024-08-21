@@ -1,0 +1,70 @@
+# Asport Client Quick-start Configuration
+
+# Asport server's address.
+# Format: <host>:<port>
+# Note: If host is an IPv6 address, it should be enclosed in square brackets.
+# The port must be the same as the server's port.
+server = "asport.akinokae.de:443"
+
+# Forwarding destination address.
+# Format: <host>:<port>
+# Note: If the destination listens on an IPv6 address, you should use it, for example, "[::1]:2024".
+local = "127.0.0.1:2024"
+
+# UUID of the user.
+# Note: This UUID is only an example. You should replace it with your own UUID.
+# This UUID must also be in the server's configuration.
+uuid = "00000000-0000-0000-0000-000000000000"
+
+# Password of the user.
+# Note: This password is only an example. You should replace it with your own password.
+password = "password"
+
+# Network type for forwarding.
+# Default: "both"
+# Options: "tcp", "udp", "both"
+# Note: ["tcp", "udp"] is also supported, it's equivalent to "both".
+# For example, HTTP, TLS, SSH, and Minecraft: Java Edition use TCP. DNS, NTP, QUIC, and Minecraft: Bedrock Edition use UDP.
+# RDP and VNC use both TCP and UDP.
+network = "both"
+
+# The method of forwarding UDP packets.
+# Default: "native"
+# Options: "native", "quic"
+# Note: Native mode use QUIC unreliable datagram for forwarding. It's low latency and overhead but may lose packets (unreliable).
+# QUIC mode use QUIC uniderectional stream for forwarding. It's reliable but has higher latency and overhead.
+# If your network has a high packet loss rate, you can try QUIC mode.
+udp_forward_mode = "native"
+
+# Expected port range for the server.
+# Default: [1, 65535]
+# Format 1: <port>
+# Format 2: [<start>, <end>]
+# Format 3: { start = <start>, end = <end> }
+# Alias: port
+# Note: If server don't have any available port in this range, the handshake will fail.
+# Use single port if you want to use a fixed port.
+port = 2024
+
+# SNI for QUIC handshake.
+# Default: <host> in `server`
+# Note: If the host of `server` is an IP address you will also need to set this.
+# You don't need to set this if the host of `server` is its domain name.
+server_name = "asport.akinokaede.com"
+
+# Congestion control algorithm.
+# Default: "cubic"
+# Options: "cubic", "reno", "bbr"
+# Note: BBR may incrase transmission rate.
+congestion_control = "bbr"
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Note: set to ["h3"] to bypass some DPI.
+alpn = ["h3"]
+
+# Log level.
+# Default: "warn"
+# Options: "trace", "debug", "info", "warn", "error", "off"
+# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
+log_level = "warn"

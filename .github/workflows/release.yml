@@ -1,0 +1,235 @@
+name: Release
+on:
+  workflow_dispatch:
+  release:
+    types: [prereleased]
+  push:
+    branches:
+      - main
+      - master
+      - dev*
+      - feat*
+      - fix*
+      - chore*
+      - test*
+    paths:
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "release/"
+      - "Cargo.lock"
+      - ".github/workflows/release.yml"
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+    paths:
+        - "**/*.rs"
+        - "**/Cargo.toml"
+        - "release/"
+        - "Cargo.lock"
+        - ".github/workflows/release.yml"
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch-name: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: x86_64-unknown-freebsd
+            os: ubuntu-latest
+            target: x86_64-unknown-freebsd
+            cross: true
+            file-ext:
+            platform: freebsd
+
+          - arch-name: x86_64-pc-windows-msvc
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            cross: false
+            file-ext: .exe
+            platform: windows
+
+          - arch-name: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
+            cross: true
+            file-ext: .exe
+            platform: windows
+
+          - arch-name: x86_64-apple-darwin
+            os: macos-latest
+            target: x86_64-apple-darwin
+            cross: false
+            file-ext:
+            platform: darwin
+
+          - arch-name: i686-unknown-linux-gnu
+            os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: i686-unknown-linux-musl
+            os: ubuntu-latest
+            target: i686-unknown-linux-musl
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: i686-pc-windows-msvc
+            os: windows-latest
+            target: i686-pc-windows-msvc
+            cross: true
+            file-ext: .exe
+            platform: windows
+
+          - arch-name: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: aarch64-pc-windows-msvc
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            cross: true
+            file-ext: .exe
+            platform: windows
+
+          - arch-name: aarch64-apple-darwin
+            os: macos-latest
+            target: aarch64-apple-darwin
+            cross: true
+            file-ext:
+            platform: darwin
+
+          - arch-name: armv7-unknown-linux-gnueabi
+            os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabi
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: armv7-unknown-linux-musleabi
+            os: ubuntu-latest
+            target: armv7-unknown-linux-musleabi
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
+            cross: true
+            file-ext:
+            platform: linux
+
+          - arch-name: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            target: riscv64gc-unknown-linux-gnu
+            cross: true
+            file-ext:
+            platform: linux
+
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: build
+          args: --release --target ${{ matrix.target }}
+
+      - name: Move binaries
+        run: |
+          mkdir artifacts/
+          mv target/${{ matrix.target }}/release/asport-client${{ matrix.file-ext }} artifacts/
+          mv target/${{ matrix.target }}/release/asport-server${{ matrix.file-ext }} artifacts/
+
+      - name: Prepare package
+        run: cp *.example.toml artifacts/
+
+      - name: Add systemd service for Linux
+        if: matrix.platform == 'linux'
+        run: cp -r release/systemd artifacts/
+
+      - name: Archive artifacts
+        id: archive
+        shell: bash
+        run: |
+          pushd artifacts
+          if ${{ matrix.platform == 'windows' }}; then
+            7z a ../asport-${{ matrix.arch-name }}.zip .
+            FILE=asport-${{ matrix.arch-name }}.zip
+          else
+            tar -cJf ../asport-${{ matrix.arch-name }}.tar.xz .
+            FILE=asport-${{ matrix.arch-name }}.tar.xz
+          fi
+          popd
+          
+          echo "FILE=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Calculate digest
+        shell: bash
+        run: |
+          DGST=${{ steps.archive.outputs.FILE }}.dgst
+          openssl dgst -md5    $FILE | sed 's/([^)]*)//g' >>$DGST
+          openssl dgst -sha1   $FILE | sed 's/([^)]*)//g' >>$DGST
+          openssl dgst -sha256 $FILE | sed 's/([^)]*)//g' >>$DGST
+          openssl dgst -sha512 $FILE | sed 's/([^)]*)//g' >>$DGST
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: asport-${{ matrix.arch-name }}
+          path: asport-${{ matrix.arch-name }}.*
+
+      - name: Upload to GitHub release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            asport-${{ matrix.arch-name }}.*
+          file_glob: true

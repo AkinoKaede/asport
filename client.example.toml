@@ -1,0 +1,146 @@
+# Asport Client Configuration
+
+# Asport server's address.
+# Format: <host>:<port>
+# Note: If host is an IPv6 address, it should be enclosed in square brackets.
+server = "[2001:db8::1]:443"
+
+# Forwarding destination address.
+# Format: <host>:<port>
+# Note: If host is an IPv6 address, it should be enclosed in square brackets.
+local = "[::1]:2024"
+
+# UUID of the user.
+# Note: This UUID is only an example. You should replace it with your own UUID.
+uuid = "00000000-0000-0000-0000-000000000000"
+
+# Password of the user.
+# Note: This password is only an example. You should replace it with your own password.
+password = "password"
+
+# Network type for forwarding.
+# Default: "both"
+# Options: "tcp", "udp", "both"
+network = "both"
+
+# The method of forwarding UDP packets.
+# Default: "native"
+# Options: "native", "quic"
+# Note: Native mode use QUIC unreliable datagram for forwarding. It's low latency and overhead but may lose packets (unreliable).
+# QUIC mode use QUIC uniderectional stream for forwarding. It's reliable but has higher latency and overhead.
+udp_forward_mode = "native"
+
+# Inactive timeout for local UDP sockets.
+# Default: "60s"
+# Note: This behavior is similar to the NAT. If a socket is inactive for a long time, it will be closed.
+udp_timeout = "60s"
+
+# Expected port range for the server.
+# Default: [1, 65535]
+# Format 1: <port>
+# Format 2: [<start>, <end>]
+# Format 3: { start = <start>, end = <end> }
+# Alias: port
+# Note: If server don't have any available port in this range, the handshake will fail.
+expected_port_range = [1, 65535]
+
+# SNI for QUIC handshake.
+# Default: <host> in `server`
+# Note: If the host of `server` is an IP address you will also need to set this.
+server_name = "asport.akinokaede.com"
+
+# Disable SNI for QUIC handshake.
+# Default: false
+disable_sni = false
+
+# Congestion control algorithm.
+# Default: "cubic"
+# Options: "cubic", "reno", "bbr"
+# Note: BBR may incrase transmission rate.
+congestion_control = "cubic"
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Format: ["<protocol-1>", "<protocol-2>", ...]
+# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the server's ALPN to ["h3"].
+alpn = ["asport"]
+
+# Enable 0-RTT handshake.
+# Default: false
+zero_rtt_handshake = false
+
+# Health check interval.
+# Default: "20s"
+# Note: Client will check the connection is not closed in this interval. If the connection is closed, it will try to reconnect.
+healthy_check = "20s"
+
+# Timeout for connection establishment.
+# Default: "8s"
+timeout = "8s"
+
+# Handshake timeout.
+# Default: "3s"
+# Note: Connection will be closed if the handshake is not completed in this timeout.
+handshake_timeout = "3s"
+
+# Task negotiation timeout.
+# Default: "3s"
+# Note: Accepting stream tasks timeout.
+task_negotiation_timeout = "3s"
+
+# Heartbeat interval.
+# Default: "3s"
+# Note: Client will send a heartbeat packet to the server in this interval.
+heartbeat = "3s"
+
+# Maximum packet size.
+# Default: 1350
+# Note: It just make impact on Native mode. This value should be less than the MTU of the network.
+# Default value (1350) is conservative and should work in most cases. If you want to get better performance, you can
+# increase this value. In most cases, 1500 is a good choice. If you use PPPoE, you can set it to 1492. And 9000 is the
+# common value for Ethernet jumbo frame.
+max_packet_size = 1350
+
+# Send window size.
+# Default: 16_777_216
+send_window = 16_777_216
+
+# Receive window size.
+# Default: 8_388_608
+receive_window = 8_388_608
+
+# Interval for removing packet fragments that can not be reassembled within the specified timeout.
+# Default: "3s"
+gc_interval = "3s"
+
+# Timeout for packet fragments that can not be reassembled, and it will be removed.
+gc_lifetime = "15s"
+
+# Send PROXY protocol to local socket.
+# Default: "disable"
+# Options: "disable", "v1", "v2"
+# Note: PROXY protocol is a protocol used to send original source address and port to the local socket. It's designed
+# by HAProxy. V1 is human-readable and only support TCP. V2 is binary and support both TCP and UDP.
+# Warning: Local socket cannon get true source address if it's listening on IPv4, and source address is an IPv6 address.
+# See also: https://www.haproxy.org/download/2.4/doc/proxy-protocol.txt
+proxy_protocol = "disable"
+
+# Log level.
+# Default: "warn"
+# Options: "trace", "debug", "info", "warn", "error", "off"
+# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
+log_level = "warn"
+
+# Certificate verification.
+# Note: You may need to set this if you use a self-signed certificate.
+[certificates]
+
+# Path to the root certificates.
+# Format: ["<path-1>", "<path-2>", ...]
+# Note: DER and PEM format are supported.
+paths = ["path/to/exmaple.crt"]
+
+# Disable system root certificates.
+# Default: false
+# Note: If you set this to true, the system root certificates will not be used.
+disable_native = false

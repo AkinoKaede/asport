@@ -1,0 +1,117 @@
+# Asport Server Configuration
+
+# Listen address.
+# Format: <ip>:<port>
+# Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
+server = "[::]:443"
+
+# Path to the certificate file.
+# Note: DER and PEM format are supported.
+certificate = "path/to/cert.pem"
+
+# Path to the private key file.
+# Note: DER and PEM format are supported.
+private_key = "path/to/key.pem"
+
+# Congestion control algorithm.
+# Default: "cubic"
+# Options: "cubic", "reno", "bbr"
+# Note: BBR may incrase transmission rate.
+congestion_control = "cubic"
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Format: ["<protocol-1>", "<protocol-2>", ...]
+# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the client's ALPN to ["h3"].
+alpn = ["asport"]
+
+# Enable 0-RTT handshake.
+# Default: false
+zero_rtt_handshake = false
+
+# Listen on IPv6 only.
+# Default: NOT SET
+# Note: Even if you set it to false, and the IP in `server` is an IPv4, software will PANIC.
+# It's recommended to NOT SET this option.
+only_v6 = false
+
+# Handshake timeout.
+# Default: "3s"
+# Note: Connection will be closed if the handshake is not completed in this timeout.
+handshake_timeout = "3s"
+
+# Authentication failed reply.
+# Default: true
+# Note: If set to true, server will send reply to client when authentication failed. Otherwise, server will close the connection.
+# If you want to hide your server from probing, you can set it to false.
+authentication_failed_reply = true
+
+# Task negotiation timeout.
+# Default: "3s"
+# Note: Accepting stream tasks timeout.
+task_negotiation_timeout = "3s"
+
+# Maximum idle time.
+# Default: "10s"
+# Note: Connection will be closed if it's idle for this time.
+max_idle_time = "10s"
+
+# Maximum packet size.
+# Default: 1350
+# Note: It just make impact on Native mode. This value should be less than the MTU of the network.
+# Default value (1350) is conservative and should work in most cases. If you want to get better performance, you can
+# increase this value. In most cases, 1500 is a good choice. If you use PPPoE, you can set it to 1492. And 9000 is the
+# common value for Ethernet jumbo frame.
+max_packet_size = 1350
+
+# Send window size.
+# Default: 16_777_216
+send_window = 16_777_216
+
+# Receive window size.
+# Default: 8_388_608
+receive_window = 8_388_608
+
+# Log level.
+# Default: "warn"
+# Options: "trace", "debug", "info", "warn", "error", "off"
+# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
+log_level = "warn"
+
+# Reverse proxies configuration.
+# Note: Multiple proxies are supported.
+[[proxies]]
+
+# Bind address for reverse proxy.
+# Format: <ip>
+# Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
+bind_ip = "[::]"
+
+# Allow ports.
+# Default:
+# Linux and Android: software will get ephemeral ports range from system. If failed, it will use 32768-60999.
+# macOS, iOS and FreeBSD: software will get ephemeral ports range from system. If failed, it will use 49152-65535.
+# Windows and other systems: software will use 49152-65535.
+# Format 1: <port>
+# Format 2: { start = <start-port>, end = <end-port> }
+# Format 3: [<port-1>, <port-2>, { start = <start-port-3>, end = <end-port-3> }, ...]
+allow_ports = { start = 49152, end = 65535 }
+
+# Listen on IPv6 only.
+# Default: NOT SET
+# Note: Even if you set it to false, and `bind_ip` is an IPv4, software will PANIC.
+# It's recommended to NOT SET this option.
+only_v6 = false
+
+# Allow network.
+# Default: "both"
+# Options: "tcp", "udp", "both"
+# Note: ["tcp", "udp"] is also supported, it's equivalent to "both".
+allow_network = "both"
+
+# Users configuration.
+# Format: <uuid> = "<password>"
+# Note: UUID must be unique in all proxies.
+[proxies.users]
+00000000-0000-0000-0000-000000000000 = "password"
+00000000-0000-0000-0000-000000000001 = "password"
