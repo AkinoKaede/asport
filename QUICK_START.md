@@ -74,15 +74,15 @@ cp asport-client /usr/local/bin
 
 ### Server
 
-You can copy the quick start configuration from the [client.quick.example.toml](./client.quick.example.toml).
-
-If you want to learn more about the configuration, please refer to the [client.example.toml](./client.example.toml).
-
-### Client
-
 You can copy the quick start configuration from the [server.quick.example.toml](./server.quick.example.toml).
 
 If you want to learn more about the configuration, please refer to the [server.example.toml](./server.example.toml).
+
+### Client
+
+You can copy the quick start configuration from the [client.quick.example.toml](./client.quick.example.toml).
+
+If you want to learn more about the configuration, please refer to the [client.example.toml](./client.example.toml).
 
 ## Run
 
