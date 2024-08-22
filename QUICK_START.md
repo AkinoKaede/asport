@@ -66,8 +66,17 @@ macOS, or any third-party tools like 7-Zip.
 After extracting the archive on Linux and macOS, you can install the binaries to your system with the following command:
 
 ```bash
-cp asport-server /usr/local/bin
-cp asport-client /usr/local/bin
+sudo install -m 755 asport-server /usr/local/bin
+sudo install -m 755 asport-client /usr/local/bin
+```
+
+On Linux distros that use systemd as its init system, you can also install the systemd service files with the following command:
+
+```bash
+sudo install -m 644 systemd/system.asport-server.service /etc/systemd/system/asport-server.service
+sudo install -m 644 systemd/system.asport-server@.service /etc/systemd/system/asport-server@.service 
+sudo install -m 644 systemd/system.asport-client.service /etc/systemd/system/asport-client.service
+sudo install -m 644 systemd/system.asport-client@.service /etc/systemd/system/asport-client@.service
 ```
 
 ## Configuration
@@ -92,4 +101,22 @@ asport-server -c server.toml
 
 # Run Client
 asport-client -c client.toml
+```
+
+On Linux distros that use systemd as its init system, you can also start the server and client with the following command:
+
+In addition, you should put your configuration files in `/usr/local/etc/asport/`.
+
+```bash
+# Run Server with default configuration file (server.toml)
+sudo systemctl start asport-server
+
+# Run Server with a specific configuration file
+sudo systemctl start asport-server@server.yml
+
+# Run Client  with default configuration file (client.toml)
+sudo systemctl start asport-client
+
+# Run Server with a specific configuration file
+sudo systemctl start asport-server@client.json
 ```
