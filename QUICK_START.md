@@ -20,7 +20,29 @@ cargo install asport-client
 
 ### Package Manager
 
-Not available yet. If you can help to package this projects, I would be grateful.
+#### Homebrew
+
+```bash
+brew tap AkinoKaede/asport
+
+# Install Server
+brew install asport-server
+
+# Install Client
+brew install asport-client
+
+# Start Server
+brew services start asport-server
+
+# Start Client
+brew services start asport-client
+```
+
+### Nix
+
+Because asport uses new features in Rust 1.80.0, but the Rust in latest Nix stable channel (24.05) is 1.77.2, so we cannot use Nix to install asport directly.
+
+However, here is a [nix package](https://github.com/AkinoKaede/nur-packages/blob/master/pkgs/asport/default.nix) in my NUR as s reference.
 
 ### Manual
 
