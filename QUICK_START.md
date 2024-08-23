@@ -30,16 +30,16 @@ Download the latest release from the [release page](https://github.com/AkinoKaed
 
 Here is the suggested target for common platforms:
 
-| Operating System                                    | Architecture                | Target                     |
-|-----------------------------------------------------|-----------------------------|----------------------------|
-| Linux (most distros)                                | x86_64 (aka. x86-64, amd64) | x86_64-unknown-linux-gnu   |
-| Linux (Alpine Linux, OpenWrt, and some old distros) | x86_64                      | x86_64-unknown-linux-musl  |
-| Linux (most distros)                                | aarch64                     | aarch64-unknown-linux-gnu  |
-| Linux (Alpine Linux, OpenWrt, and some old distros) | aarch64                     | aarch64-unknown-linux-musl |
-| macOS                                               | x86_64 (Intel)              | x86_64-apple-darwin        |
-| macOS                                               | aarch64 (Apple Silicon)     | aarch64-apple-darwin       |
-| Windows                                             | x86_64                      | x86_64-pc-windows-msvc     |
-| Windows                                             | aarch64                     | aarch64-pc-windows-msvc    |
+| Operating System                                    | Architecture                | Target                     | Download                                                                                                           |
+|-----------------------------------------------------|-----------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Linux (most distros)                                | x86_64 (aka. x86-64, amd64) | x86_64-unknown-linux-gnu   | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-x86_64-unknown-linux-gnu.tar.xz)   |
+| Linux (Alpine Linux, OpenWrt, and some old distros) | x86_64                      | x86_64-unknown-linux-musl  | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-x86_64-unknown-linux-musl.tar.xz)  |
+| Linux (most distros)                                | aarch64                     | aarch64-unknown-linux-gnu  | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-aarch64-unknown-linux-gnu.tar.xz)  |
+| Linux (Alpine Linux, OpenWrt, and some old distros) | aarch64                     | aarch64-unknown-linux-musl | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-aarch64-unknown-linux-musl.tar.xz) |
+| macOS                                               | x86_64 (Intel)              | x86_64-apple-darwin        | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-x86_64-apple-darwin.tar.xz)        |
+| macOS                                               | aarch64 (Apple Silicon)     | aarch64-apple-darwin       | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-aarch64-apple-darwin.tar.xz)       |
+| Windows                                             | x86_64                      | x86_64-pc-windows-msvc     | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-x86_64-pc-windows-msvc.zip)        |
+| Windows                                             | aarch64                     | aarch64-pc-windows-msvc    | [Download](https://github.com/AkinoKaede/asport/releases/latest/download/asport-aarch64-pc-windows-msvc.zip)       |
 
 Your target may vary, please check
 the [Rust Platform Support](https://doc.rust-lang.org/nightly/rustc/platform-support.html) for more information.
@@ -70,7 +70,8 @@ sudo install -m 755 asport-server /usr/local/bin
 sudo install -m 755 asport-client /usr/local/bin
 ```
 
-On Linux distros that use systemd as its init system, you can also install the systemd service files with the following command:
+On Linux distros that use systemd as its init system, you can also install the systemd service files with the following
+command:
 
 ```bash
 sudo install -m 644 systemd/system.asport-server.service /etc/systemd/system/asport-server.service
@@ -103,7 +104,8 @@ asport-server -c server.toml
 asport-client -c client.toml
 ```
 
-On Linux distros that use systemd as its init system, you can also start the server and client with the following command:
+On Linux distros that use systemd as its init system, you can also start the server and client with the following
+command:
 
 In addition, you should put your configuration files in `/usr/local/etc/asport/`.
 
