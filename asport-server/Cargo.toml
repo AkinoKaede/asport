@@ -22,7 +22,7 @@ env_logger = { version = "0.11.5", default-features = false, features = ["auto-c
 humantime = { version = "2.1.0", default-features = false }
 log = { version = "0.4.22", default-features = false, features = ["serde", "std"] }
 parking_lot = { version = "0.12.3", default-features = false, features = ["send_guard"] }
-quinn = { version = "0.11.2", default-features = false, features = ["futures-io", "runtime-tokio", "rustls"] }
+quinn = { version = "0.11.4", default-features = false, features = ["futures-io", "runtime-tokio", "rustls"] }
 register-count = { version = "0.1.0", default-features = false, features = ["std"] }
 rustls = { version = "0.23.11", default-features = false }
 rustls-pemfile = { version = "2.1.2", default-features = false, features = ["std"] }
