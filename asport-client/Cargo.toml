@@ -1,6 +1,6 @@
 [package]
 name = "asport-client"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "A simple Asport client implementation."
 categories = ["network-programming"]
