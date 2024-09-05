@@ -1,6 +1,6 @@
 [package]
 name = "asport-quinn"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "A wrapped quinn to implement ASPORT protocol."
 categories = ["network-programming"]
