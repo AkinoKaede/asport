@@ -1,7 +1,8 @@
 use std::io::Error as IoError;
 
-use quinn::{ConnectError, ConnectionError, crypto::rustls::NoInitialCipherSuite};
+use quinn::{crypto::rustls::NoInitialCipherSuite, ConnectError, ConnectionError};
 use rustls::Error as RustlsError;
+use rustls_native_certs::Error as RustlsNativeCertsError;
 use thiserror::Error;
 
 use asport_quinn::Error as ModelError;
@@ -14,8 +15,8 @@ pub enum Error {
     Io(#[from] IoError),
     #[error(transparent)]
     Connect(#[from] ConnectError),
-    #[error("load native certificates error: {0}")]
-    LoadNativeCerts(IoError),
+    #[error("load native certificates error: {0:?}")]
+    LoadNativeCerts(Vec<RustlsNativeCertsError>),
     #[error(transparent)]
     Rustls(#[from] RustlsError),
     #[error(transparent)]
