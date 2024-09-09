@@ -32,7 +32,7 @@ serde = { version = "1.0.209", default-features = false, features = ["derive", "
 socket2 = { version = "0.5.7", default-features = false }
 thiserror = { version = "1.0.63", default-features = false }
 tokio = { version = "1.40.0", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
-tokio-util = { version = "0.7.11", default-features = false, features = ["compat"] }
+tokio-util = { version = "0.7.12", default-features = false, features = ["compat"] }
 uuid = { version = "1.10.0", default-features = false, features = ["serde", "std"] }
 
 [dev-dependencies]
