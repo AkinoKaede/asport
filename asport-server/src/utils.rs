@@ -125,14 +125,11 @@ impl FromStr for CongestionControl {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("cubic") {
-            Ok(Self::Cubic)
-        } else if s.eq_ignore_ascii_case("new_reno") || s.eq_ignore_ascii_case("newreno") {
-            Ok(Self::NewReno)
-        } else if s.eq_ignore_ascii_case("bbr") {
-            Ok(Self::Bbr)
-        } else {
-            Err("invalid congestion control")
+          match s.to_lowercase().as_str() {
+            "cubic" => Ok(Self::Cubic),
+            "new_reno" | "newreno" => Ok(Self::NewReno),
+            "bbr" => Ok(Self::Bbr),
+            _ => Err("invalid congestion control")
         }
     }
 }
@@ -170,15 +167,11 @@ impl FromStr for Network {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("tcp") {
-            Ok(Self::Tcp)
-        } else if s.eq_ignore_ascii_case("udp") {
-            Ok(Self::Udp)
-        } else if vec!["both", "tcpudp", "tcp_udp", "tcp-udp", "all"].iter()
-            .any(|&x| s.eq_ignore_ascii_case(x)) {
-            Ok(Self::Both)
-        } else {
-            Err("invalid network")
+       match s.to_lowercase().as_str() {
+            "tcp" => Ok(Self::Tcp),
+            "udp" => Ok(Self::Udp),
+            "both" | "tcpudp" | "tcp_udp" | "tcp-udp" | "all" => Ok(Self::Both),
+            _ => Err("invalid network")
         }
     }
 }

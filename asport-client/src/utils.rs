@@ -16,7 +16,10 @@ use asport::ForwardMode;
 
 use crate::error::Error;
 
-pub fn load_certs<P: AsRef<Path>>(paths: Vec<P>, disable_native: bool) -> Result<RootCertStore, Error> {
+pub fn load_certs<P: AsRef<Path>>(
+    paths: Vec<P>,
+    disable_native: bool,
+) -> Result<RootCertStore, Error> {
     let mut certs = RootCertStore::empty();
 
     for path in &paths {
@@ -50,14 +53,19 @@ pub fn load_certs<P: AsRef<Path>>(paths: Vec<P>, disable_native: bool) -> Result
     Ok(certs)
 }
 
-pub fn union_proxy_protocol_addresses(source: Option<SocketAddr>, destination: SocketAddr)
-                                      -> Option<(SocketAddr, SocketAddr)> {
+pub fn union_proxy_protocol_addresses(
+    source: Option<SocketAddr>,
+    destination: SocketAddr,
+) -> Option<(SocketAddr, SocketAddr)> {
     match (source, destination) {
         // If destination is an IPv6 address and source is an IPv4 address, convert source to an IPv6-mapped-IPv4 address
         // Avoid to be UNKNOWN or AF_UNSPEC
         // See also: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
         (Some(SocketAddr::V4(source_v4)), destination @ SocketAddr::V6(_)) => {
-            let source = SocketAddr::new(IpAddr::from(source_v4.ip().to_ipv6_mapped()), source_v4.port());
+            let source = SocketAddr::new(
+                IpAddr::from(source_v4.ip().to_ipv6_mapped()),
+                source_v4.port(),
+            );
             Some((source, destination))
         }
         // If destination is an IPv4 address and source is an IPv6 address, try to convert source to an IPv4-mapped-IPv6 address
@@ -86,14 +94,11 @@ impl FromStr for CongestionControl {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("cubic") {
-            Ok(Self::Cubic)
-        } else if s.eq_ignore_ascii_case("new_reno") || s.eq_ignore_ascii_case("newreno") {
-            Ok(Self::NewReno)
-        } else if s.eq_ignore_ascii_case("bbr") {
-            Ok(Self::Bbr)
-        } else {
-            Err("invalid congestion control")
+        match s.to_lowercase().as_str() {
+            "cubic" => Ok(Self::Cubic),
+            "new_reno" | "newreno" => Ok(Self::NewReno),
+            "bbr" => Ok(Self::Bbr),
+            _ => Err("invalid congestion control"),
         }
     }
 }
@@ -141,15 +146,11 @@ impl FromStr for Network {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("tcp") {
-            Ok(Self::Tcp)
-        } else if s.eq_ignore_ascii_case("udp") {
-            Ok(Self::Udp)
-        } else if vec!["both", "tcpudp", "tcp_udp", "tcp-udp", "all"].iter()
-            .any(|&x| s.eq_ignore_ascii_case(x)) {
-            Ok(Self::Both)
-        } else {
-            Err("invalid network")
+        match s.to_lowercase().as_str() {
+            "tcp" => Ok(Self::Tcp),
+            "udp" => Ok(Self::Udp),
+            "both" | "tcpudp" | "tcp_udp" | "tcp-udp" | "all" => Ok(Self::Both),
+            _ => Err("invalid network"),
         }
     }
 }
@@ -164,12 +165,10 @@ impl FromStr for UdpForwardMode {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("native") {
-            Ok(Self::Native)
-        } else if s.eq_ignore_ascii_case("quic") {
-            Ok(Self::Quic)
-        } else {
-            Err("invalid UDP relay mode")
+        match s.to_lowercase().as_str() {
+            "native" => Ok(Self::Native),
+            "quic" => Ok(Self::Quic),
+            _ => Err("invalid UDP relay mode"),
         }
     }
 }
@@ -194,15 +193,11 @@ impl FromStr for ProxyProtocol {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.eq_ignore_ascii_case("v1") {
-            Ok(Self::V1)
-        } else if s.eq_ignore_ascii_case("v2") {
-            Ok(Self::V2)
-        } else if vec!["none", "disable", "disabled", "off"].iter()
-            .any(|&x| s.eq_ignore_ascii_case(x)) {
-            Ok(Self::None)
-        } else {
-            Err("invalid proxy protocol version")
+        match s.to_lowercase().as_str() {
+            "v1" => Ok(Self::V1),
+            "v2" => Ok(Self::V2),
+            "none" | "disable" | "disabled" | "off" => Ok(Self::None),
+            _ => Err("invalid proxy protocol version"),
         }
     }
 }
@@ -216,7 +211,6 @@ impl Display for ProxyProtocol {
         }
     }
 }
-
 
 pub struct NetworkUdpForwardModeCombine(Network, UdpForwardMode);
 
@@ -259,15 +253,13 @@ impl Address {
         }
     }
 
-    pub async fn resolve(&self) -> Result<impl Iterator<Item=SocketAddr>, Error> {
+    pub async fn resolve(&self) -> Result<impl Iterator<Item = SocketAddr>, Error> {
         match self {
             Self::SocketAddress(addr) => Ok(vec![*addr].into_iter()),
-            Self::DomainAddress(host, port) => {
-                Ok(net::lookup_host((host.as_str(), *port))
-                    .await?
-                    .collect::<Vec<_>>()
-                    .into_iter())
-            }
+            Self::DomainAddress(host, port) => Ok(net::lookup_host((host.as_str(), *port))
+                .await?
+                .collect::<Vec<_>>()
+                .into_iter()),
         }
     }
 }
@@ -317,7 +309,7 @@ impl ServerAddress {
         &self.server_name
     }
 
-    pub async fn resolve(&self) -> Result<impl Iterator<Item=SocketAddr>, Error> {
+    pub async fn resolve(&self) -> Result<impl Iterator<Item = SocketAddr>, Error> {
         self.addr.resolve().await
     }
 }
@@ -330,15 +322,24 @@ mod tests {
     fn test_deserialize_address() {
         let s = r#""127.0.0.1:8080""#;
         let addr: Address = serde_json::from_str(s).unwrap();
-        assert_eq!(addr, Address::SocketAddress(SocketAddr::from(([127, 0, 0, 1], 8080))));
+        assert_eq!(
+            addr,
+            Address::SocketAddress(SocketAddr::from(([127, 0, 0, 1], 8080)))
+        );
 
         let s = r#""[::1]:8080""#;
         let addr: Address = serde_json::from_str(s).unwrap();
-        assert_eq!(addr, Address::SocketAddress(SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 8080))));
+        assert_eq!(
+            addr,
+            Address::SocketAddress(SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 8080)))
+        );
 
         let s = r#""asport.akinokaede.com:8080""#;
         let addr: Address = serde_json::from_str(s).unwrap();
-        assert_eq!(addr, Address::DomainAddress("asport.akinokaede.com".to_string(), 8080));
+        assert_eq!(
+            addr,
+            Address::DomainAddress("asport.akinokaede.com".to_string(), 8080)
+        );
 
         // Invalid address
         let s = r#""127.0.0.1""#;
