@@ -26,7 +26,7 @@ quinn = { version = "0.11.4", default-features = false, features = ["futures-io"
 register-count = { version = "0.1.0", default-features = false, features = ["std"] }
 rustls = { version = "0.23.11", default-features = false }
 rustls-pemfile = { version = "2.1.2", default-features = false, features = ["std"] }
-serde = { version = "1.0.209", default-features = false, features = ["derive", "std"] }
+serde = { version = "1.0.215", default-features = false, features = ["derive", "std"] }
 socket2 = { version = "0.5.7", default-features = false }
 thiserror = { version = "1.0.63", default-features = false }
 tokio = { version = "1.40.0", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
