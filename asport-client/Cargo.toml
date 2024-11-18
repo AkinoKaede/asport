@@ -36,7 +36,7 @@ tokio-util = { version = "0.7.11", default-features = false, features = ["compat
 uuid = { version = "1.10.0", default-features = false, features = ["serde", "std"] }
 
 [dev-dependencies]
-serde_json = { version = "1.0.127", default-features = false, features = ["std"] }
+serde_json = { version = "1.0.133", default-features = false, features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 xdg = { version = "2.5.2", default-features = false }
