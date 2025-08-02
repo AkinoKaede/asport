@@ -181,7 +181,7 @@ impl Connection {
         }
 
         let (network, udp_forward_mode) =
-            <ForwardMode as Into<NetworkUdpForwardModeCombine>>::into(hello.forward_mode())
+            <ForwardMode as TryInto<NetworkUdpForwardModeCombine>>::try_into(hello.forward_mode())?
                 .into();
         self.udp_forward_mode.store(Some(udp_forward_mode));
 

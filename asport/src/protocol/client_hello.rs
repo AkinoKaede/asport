@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use bitflags::bitflags;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -16,7 +17,10 @@ use uuid::Uuid;
 ///
 /// - `UUID` - client UUID
 /// - `TOKEN` - client token. The client raw password is hashed into a 256-bit long token using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. While exporting, the `label` should be the client UUID and the `context` should be the raw password.
-/// - `FM` - forward mode. The forward mode of the client. It can be: `0x00` for TCP, `0x01` for UDP native, `0x02` for UDP QUIC, `0x03` for TCP + UDP native, `0x04` for TCP + UDP QUIC.
+/// - `FM` - forward mode. The forward mode of the client. It is a bitmask that can contain the following flags:
+/// - `TCP` - TCP forwarding.
+/// - `UDP_NATIVE` - UDP native forwarding.
+/// - `UDP_QUIC` - UDP QUIC forwarding.
 /// - `EPRS` - expected port range start. The start of the port range that the client expects to be forwarded.
 /// - `EPRE` - expected port range end. The end of the port range that the client expects to be forwarded. It must be greater than or equal to `EPRS`.
 #[derive(Clone, Debug)]
@@ -71,37 +75,38 @@ impl From<ClientHello> for (Uuid, [u8; 32], ForwardMode, RangeInclusive<u16>) {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-#[repr(u8)]
-pub enum ForwardMode {
-    Tcp = 0x00,
-    UdpNative = 0x01, // UDP forward with QUIC unreliable datagram
-    UdpQuic = 0x02, // UDP forward with QUIC unidirectional stream
-    // Combine
-    TcpUdpNative = 0x03, // Tcp + UdpNative
-    TcpUdpQuic = 0x04, // Tcp + UdpQuic
+
+/// Bitflags for ForwardMode
+/// High 5 bits are reserved for future use, so we only use the lower 3 bits for the current modes.
+/// The modes are:
+/// - 0b001 - TCP
+/// - 0b010 - UDP_NATIVE
+/// - 0b100 - UDP_QUIC
+/// UDP_NATIVE and UDP_QUIC cannot be enabled at the same time.
+bitflags! {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct ForwardMode: u8 {
+        const TCP = 1 << 0;
+        const UDP_NATIVE = 1 << 1;
+        const UDP_QUIC = 1 << 2;
+
+        // Combined modes
+        const TCP_UDP_NATIVE = Self::TCP.bits() | Self::UDP_NATIVE.bits();
+        const TCP_UDP_QUIC = Self::TCP.bits() | Self::UDP_QUIC.bits();
+    }
 }
 
 impl ForwardMode {
     pub fn tcp(&self) -> bool {
-        match self {
-            ForwardMode::Tcp | ForwardMode::TcpUdpNative | ForwardMode::TcpUdpQuic => true,
-            _ => false,
-        }
+        self.contains(ForwardMode::TCP)
     }
 
     pub fn udp(&self) -> bool {
-        match self {
-            ForwardMode::UdpNative | ForwardMode::UdpQuic | ForwardMode::TcpUdpNative | ForwardMode::TcpUdpQuic => true,
-            _ => false,
-        }
+        self.contains(ForwardMode::UDP_NATIVE) || self.contains(ForwardMode::UDP_QUIC)
     }
 
     pub fn both(&self) -> bool {
-        match self {
-            ForwardMode::TcpUdpNative | ForwardMode::TcpUdpQuic => true,
-            _ => false,
-        }
+        self.contains(ForwardMode::TCP_UDP_NATIVE) || self.contains(ForwardMode::TCP_UDP_QUIC)
     }
 }
 
@@ -113,25 +118,22 @@ impl TryFrom<u8> for ForwardMode {
     type Error = InvalidForwardMode;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0x00 => Ok(ForwardMode::Tcp),
-            0x01 => Ok(ForwardMode::UdpNative),
-            0x02 => Ok(ForwardMode::UdpQuic),
-            0x03 => Ok(ForwardMode::TcpUdpNative),
-            0x04 => Ok(ForwardMode::TcpUdpQuic),
-            _ => Err(InvalidForwardMode(value)),
+        match ForwardMode::from_bits(value) {
+            Some(mode) => Ok(mode),
+            None => Err(InvalidForwardMode(value)),
         }
     }
 }
 
-impl From<ForwardMode> for &[u8] {
+impl From<ForwardMode> for u8 {
     fn from(mode: ForwardMode) -> Self {
-        match mode {
-            ForwardMode::Tcp => &[0x00],
-            ForwardMode::UdpNative => &[0x01],
-            ForwardMode::UdpQuic => &[0x02],
-            ForwardMode::TcpUdpNative => &[0x03],
-            ForwardMode::TcpUdpQuic => &[0x04],
-        }
+        mode.bits()
+    }
+}
+
+impl std::fmt::Display for ForwardMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Display the forward mode as a bit sequence (binary)
+        write!(f, "{:03b}", self.bits())
     }
 }

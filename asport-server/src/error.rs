@@ -4,7 +4,7 @@ use quinn::{ConnectionError, crypto::rustls::NoInitialCipherSuite};
 use rustls::Error as RustlsError;
 use thiserror::Error;
 use uuid::Uuid;
-
+use asport::ForwardMode;
 use asport_quinn::Error as ModelError;
 use crate::utils::Network;
 
@@ -40,6 +40,8 @@ pub enum Error {
     TaskNegotiationTimeout,
     #[error("invalid private key: {0}")]
     InvalidPrivateKey(&'static str),
+    #[error("invalid forward mode: {0}")]
+    InvalidForwardMode(ForwardMode),
 }
 
 impl Error {

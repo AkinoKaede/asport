@@ -102,11 +102,9 @@ header expected_port_range_h {
 };
 
 enum bit<8> ForwardMode {
-    Tcp = 0;
-    UdpNative = 1;
-    UdpQuic = 2;
-    TcpUdpNative = 3;
-    TcpUdpQuic = 4;
+    Tcp = 1 << 0;
+    UdpNative = 1 << 1;
+    UdpQuic = 1 << 2;
 };
 
 header client_hello_h {

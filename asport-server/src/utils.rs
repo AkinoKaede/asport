@@ -218,14 +218,16 @@ impl NetworkUdpForwardModeCombine {
     }
 }
 
-impl From<ForwardMode> for NetworkUdpForwardModeCombine {
-    fn from(mode: ForwardMode) -> Self {
+impl TryFrom<ForwardMode> for NetworkUdpForwardModeCombine {
+    type Error = Error;
+    fn try_from(mode: ForwardMode) -> Result<Self, Self::Error> {
         match mode {
-            ForwardMode::Tcp => Self::new(Network::Tcp, UdpForwardMode::Native),
-            ForwardMode::UdpNative => Self::new(Network::Udp, UdpForwardMode::Native),
-            ForwardMode::UdpQuic => Self::new(Network::Udp, UdpForwardMode::Quic),
-            ForwardMode::TcpUdpNative => Self::new(Network::Both, UdpForwardMode::Native),
-            ForwardMode::TcpUdpQuic => Self::new(Network::Both, UdpForwardMode::Quic),
+            ForwardMode::TCP => Ok(Self::new(Network::Tcp, UdpForwardMode::Native)),
+            ForwardMode::UDP_NATIVE => Ok(Self::new(Network::Udp, UdpForwardMode::Native)),
+            ForwardMode::UDP_QUIC => Ok(Self::new(Network::Udp, UdpForwardMode::Quic)),
+            ForwardMode::TCP_UDP_NATIVE => Ok(Self::new(Network::Both, UdpForwardMode::Native)),
+            ForwardMode::TCP_UDP_QUIC => Ok(Self::new(Network::Both, UdpForwardMode::Quic)),
+            _ => Err(Error::InvalidForwardMode(mode)),
         }
     }
 }

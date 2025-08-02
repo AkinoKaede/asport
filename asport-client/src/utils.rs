@@ -223,13 +223,20 @@ impl NetworkUdpForwardModeCombine {
 impl From<NetworkUdpForwardModeCombine> for ForwardMode {
     fn from(value: NetworkUdpForwardModeCombine) -> Self {
         let (network, mode) = (value.0, value.1);
-        match (network, mode) {
-            (Network::Tcp, _) => ForwardMode::Tcp,
-            (Network::Udp, UdpForwardMode::Native) => ForwardMode::UdpNative,
-            (Network::Udp, UdpForwardMode::Quic) => ForwardMode::UdpQuic,
-            (Network::Both, UdpForwardMode::Native) => ForwardMode::TcpUdpNative,
-            (Network::Both, UdpForwardMode::Quic) => ForwardMode::TcpUdpQuic,
+
+        let mut forward_mode = ForwardMode::empty();
+        if network.tcp() {
+            forward_mode.insert(ForwardMode::TCP);
         }
+
+        if network.udp() {
+            match mode {
+                UdpForwardMode::Native => forward_mode.insert(ForwardMode::UDP_NATIVE),
+                UdpForwardMode::Quic => forward_mode.insert(ForwardMode::UDP_QUIC),
+            }
+        }
+
+        forward_mode
     }
 }
 
