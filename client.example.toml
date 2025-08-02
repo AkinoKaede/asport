@@ -51,7 +51,7 @@ server_name = "asport.akinokaede.com"
 
 # Skip certificate verification.
 # default: false
-skip_cert_verification = false
+skip_certificate_verification = false
 
 # Disable SNI for QUIC handshake.
 # Default: false

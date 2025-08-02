@@ -69,8 +69,11 @@ pub struct Config {
     #[serde(default = "default::disable_sni")]
     pub disable_sni: bool,
 
-    #[serde(default = "default::skip_cert_verification")]
-    pub skip_cert_verification: bool,
+    #[serde(
+        alias = "skip_cert_verify",
+        default = "default::skip_certificate_verification"
+    )]
+    pub skip_certificate_verification: bool,
 
     #[serde(
         default = "default::congestion_control",
@@ -221,7 +224,7 @@ mod default {
         1..=65535
     }
 
-    pub fn skip_cert_verification() -> bool {
+    pub fn skip_certificate_verification() -> bool {
         false
     }
     pub fn disable_sni() -> bool {

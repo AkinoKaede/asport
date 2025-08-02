@@ -81,7 +81,7 @@ impl Connection {
             .with_root_certificates(cfg.certificates)
             .with_no_client_auth();
 
-        if cfg.skip_cert_verification {
+        if cfg.skip_certificate_verification {
             crypto
                 .dangerous()
                 .set_certificate_verifier(SkipServerVerification::new());
