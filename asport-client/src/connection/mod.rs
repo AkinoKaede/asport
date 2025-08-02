@@ -2,18 +2,27 @@ use std::{
     collections::HashMap,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket},
     ops::RangeInclusive,
-    sync::{Arc, atomic::AtomicU32},
+    sync::{atomic::AtomicU32, Arc},
     time::Duration,
 };
 
 use crossbeam_utils::atomic::AtomicCell;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
-use quinn::{ClientConfig, congestion::{BbrConfig, CubicConfig, NewRenoConfig},
-            Connection as QuinnConnection, crypto::rustls::QuicClientConfig, Endpoint as QuinnEndpoint,
-            EndpointConfig, TokioRuntime, TransportConfig, VarInt, ZeroRttAccepted};
+use quinn::{
+    congestion::{BbrConfig, CubicConfig, NewRenoConfig},
+    crypto::rustls::QuicClientConfig,
+    ClientConfig, Connection as QuinnConnection, Endpoint as QuinnEndpoint, EndpointConfig,
+    TokioRuntime, TransportConfig, VarInt, ZeroRttAccepted,
+};
 use register_count::Counter;
-use rustls::ClientConfig as RustlsClientConfig;
+use rustls::{
+    client::danger,
+    crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider},
+    pki_types::{CertificateDer, ServerName, UnixTime},
+    {ClientConfig as RustlsClientConfig, DigitallySignedStruct, SignatureScheme},
+};
+
 use tokio::{
     sync::{Mutex as AsyncMutex, OnceCell as AsyncOnceCell},
     time,
@@ -21,7 +30,7 @@ use tokio::{
 use uuid::Uuid;
 
 use asport::ServerHello as ServerHelloHeader;
-use asport_quinn::{Connection as Model, ServerHello, side};
+use asport_quinn::{side, Connection as Model, ServerHello};
 
 use crate::{
     config::Config,
@@ -31,16 +40,15 @@ use crate::{
 
 use self::{authenticated::Authenticated, udp_session::UdpSession};
 
-mod handle_task;
-mod handle_stream;
 mod authenticated;
+mod handle_stream;
+mod handle_task;
 mod udp_session;
 
 static ENDPOINT: OnceCell<Mutex<Endpoint>> = OnceCell::new();
 static CONNECTION: AsyncOnceCell<AsyncMutex<Connection>> = AsyncOnceCell::const_new();
 static HEALTHY_CHECK: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));
 static TIMEOUT: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));
-
 
 pub const ERROR_CODE: VarInt = VarInt::from_u32(0);
 const DEFAULT_CONCURRENT_STREAMS: u32 = 32;
@@ -70,15 +78,20 @@ pub struct Connection {
 impl Connection {
     pub fn set_config(cfg: Config) -> Result<(), Error> {
         let mut crypto = RustlsClientConfig::builder()
-            .with_root_certificates(cfg.certificates).with_no_client_auth();
+            .with_root_certificates(cfg.certificates)
+            .with_no_client_auth();
+
+        if cfg.skip_cert_verification {
+            crypto
+                .dangerous()
+                .set_certificate_verifier(SkipServerVerification::new());
+        }
 
         crypto.alpn_protocols = cfg.alpn;
         crypto.enable_early_data = true;
         crypto.enable_sni = !cfg.disable_sni;
 
-        let mut config = ClientConfig::new(
-            Arc::new(QuicClientConfig::try_from(crypto)?)
-        );
+        let mut config = ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?));
         let mut tp_cfg = TransportConfig::default();
 
         tp_cfg
@@ -109,7 +122,6 @@ impl Connection {
             })
             .map_err(|err| Error::Socket("failed to create endpoint UDP socket", err))?;
 
-
         let mut ep = QuinnEndpoint::new(
             EndpointConfig::default(),
             None,
@@ -138,7 +150,6 @@ impl Connection {
             gc_lifetime: cfg.gc_lifetime,
             proxy_protocol: cfg.proxy_protocol,
         };
-
 
         ENDPOINT
             .set(Mutex::new(ep))
@@ -236,10 +247,13 @@ impl Connection {
             max_concurrent_bi_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
         };
 
-        tokio::spawn(
-            conn.clone()
-                .init(zero_rtt_accepted, heartbeat, handshake_timeout, gc_interval, gc_lifetime),
-        );
+        tokio::spawn(conn.clone().init(
+            zero_rtt_accepted,
+            heartbeat,
+            handshake_timeout,
+            gc_interval,
+            gc_lifetime,
+        ));
 
         conn
     }
@@ -301,7 +315,9 @@ impl Connection {
             ServerHelloHeader::HANDSHAKE_CODE_AUTH_FAILED => Err(Error::AuthFailed),
             ServerHelloHeader::HANDSHAKE_CODE_BIND_FAILED => Err(Error::RemoteBindFailed),
             ServerHelloHeader::HANDSHAKE_CODE_PORT_DENIED => Err(Error::PortDenied),
-            ServerHelloHeader::HANDSHAKE_CODE_NETWORK_DENIED => Err(Error::NetworkDenied(self.network)),
+            ServerHelloHeader::HANDSHAKE_CODE_NETWORK_DENIED => {
+                Err(Error::NetworkDenied(self.network))
+            }
             _ => unreachable!(),
         }
     }
@@ -389,7 +405,6 @@ impl Endpoint {
                 Ok((conn, zero_rtt_accepted))
             };
 
-
             match connect_to.await {
                 Ok((conn, zero_rtt_accepted)) => {
                     return Ok(Connection::new(
@@ -415,7 +430,59 @@ impl Endpoint {
             }
         }
 
-
         Err(last_err.unwrap_or(Error::DnsResolve))
+    }
+}
+
+#[derive(Debug)]
+struct SkipServerVerification(Arc<CryptoProvider>);
+
+impl SkipServerVerification {
+    fn new() -> Arc<Self> {
+        Arc::new(Self(Arc::new(rustls::crypto::ring::default_provider())))
+    }
+}
+
+impl danger::ServerCertVerifier for SkipServerVerification {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &CertificateDer<'_>,
+        _intermediates: &[CertificateDer<'_>],
+        _server_name: &ServerName<'_>,
+        _ocsp: &[u8],
+        _now: UnixTime,
+    ) -> Result<danger::ServerCertVerified, rustls::Error> {
+        Ok(danger::ServerCertVerified::assertion())
+    }
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<danger::HandshakeSignatureValid, rustls::Error> {
+        verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &self.0.signature_verification_algorithms,
+        )
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<danger::HandshakeSignatureValid, rustls::Error> {
+        verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &self.0.signature_verification_algorithms,
+        )
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.0.signature_verification_algorithms.supported_schemes()
     }
 }

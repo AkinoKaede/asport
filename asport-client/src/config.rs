@@ -13,7 +13,9 @@ use rustls::RootCertStore;
 use serde::{de::Error as DeError, Deserialize, Deserializer};
 use uuid::Uuid;
 
-use crate::utils::{Address, CongestionControl, load_certs, Network, ProxyProtocol, UdpForwardMode};
+use crate::utils::{
+    load_certs, Address, CongestionControl, Network, ProxyProtocol, UdpForwardMode,
+};
 
 // TODO: need a better way to do this
 static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -67,16 +69,16 @@ pub struct Config {
     #[serde(default = "default::disable_sni")]
     pub disable_sni: bool,
 
+    #[serde(default = "default::skip_cert_verification")]
+    pub skip_cert_verification: bool,
+
     #[serde(
         default = "default::congestion_control",
         deserialize_with = "deserialize_from_str"
     )]
     pub congestion_control: CongestionControl,
 
-    #[serde(
-        default = "default::alpn",
-        deserialize_with = "deserialize_alpn"
-    )]
+    #[serde(default = "default::alpn", deserialize_with = "deserialize_alpn")]
     pub alpn: Vec<Vec<u8>>,
 
     #[serde(default = "default::zero_rtt_handshake")]
@@ -148,11 +150,9 @@ impl Config {
         let base_path = path.parent();
         match base_path {
             Some(base_path) => {
-                CONFIG_BASE_PATH.set(base_path.to_path_buf()).map_err(
-                    |e| config::ConfigError::custom(
-                        format!("failed to set config path: {:?}", e)
-                    )
-                )?;
+                CONFIG_BASE_PATH.set(base_path.to_path_buf()).map_err(|e| {
+                    config::ConfigError::custom(format!("failed to set config path: {:?}", e))
+                })?;
             }
             None => {
                 return Err(config::ConfigError::custom("config path is not a file"));
@@ -164,9 +164,7 @@ impl Config {
             .build()?;
 
         match cfg.try_deserialize::<Config>() {
-            Ok(cfg) => {
-                Ok(cfg)
-            }
+            Ok(cfg) => Ok(cfg),
             Err(err) => Err(config::ConfigError::custom(err)),
         }
     }
@@ -223,6 +221,9 @@ mod default {
         1..=65535
     }
 
+    pub fn skip_cert_verification() -> bool {
+        false
+    }
     pub fn disable_sni() -> bool {
         false
     }
@@ -325,7 +326,9 @@ where
         .map_err(DeError::custom)
 }
 
-pub fn deserialize_expected_port_range<'de, D>(deserializer: D) -> Result<RangeInclusive<u16>, D::Error>
+pub fn deserialize_expected_port_range<'de, D>(
+    deserializer: D,
+) -> Result<RangeInclusive<u16>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -363,7 +366,11 @@ where
 
     let base_path = CONFIG_BASE_PATH.get().unwrap();
 
-    let paths = certs_cfg.paths.iter().map(|path| base_path.join(path)).collect();
+    let paths = certs_cfg
+        .paths
+        .iter()
+        .map(|path| base_path.join(path))
+        .collect();
 
     match load_certs(paths, certs_cfg.disable_native) {
         Ok(certs) => Ok(certs),

@@ -49,6 +49,10 @@ expected_port_range = [1, 65535]
 # Note: If the host of `server` is an IP address you will also need to set this.
 server_name = "asport.akinokaede.com"
 
+# Skip certificate verification.
+# default: false
+skip_cert_verification = false
+
 # Disable SNI for QUIC handshake.
 # Default: false
 disable_sni = false
