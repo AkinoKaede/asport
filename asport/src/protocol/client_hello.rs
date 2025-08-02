@@ -16,11 +16,11 @@ use uuid::Uuid;
 /// where:
 ///
 /// - `UUID` - client UUID
-/// - `TOKEN` - client token. The client raw password is hashed into a 256-bit long token using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. While exporting, the `label` should be the client UUID and the `context` should be the raw password.
-/// - `FM` - forward mode. The forward mode of the client. It is a bitmask that can contain the following flags:
-/// - `TCP` - TCP forwarding.
-/// - `UDP_NATIVE` - UDP native forwarding.
-/// - `UDP_QUIC` - UDP QUIC forwarding.
+/// - `TOKEN` - client token. The client raw password is hashed into a 256-bit long ¬token using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. While exporting, the `label` should be the client UUID and the `context` should be the raw password.
+/// - `FM` - forward mode. The forward mode of the client. It is a bitmask that indicates which protocols the client supports for port forwarding. High 5 bits are reserved for future use and must be set to 0. The low 3 bits are used as follows:
+///     - `0b001` - TCP
+///     - `0b010` - UDP (native)
+///     - `0b100` - UDP (QUIC)
 /// - `EPRS` - expected port range start. The start of the port range that the client expects to be forwarded.
 /// - `EPRE` - expected port range end. The end of the port range that the client expects to be forwarded. It must be greater than or equal to `EPRS`.
 #[derive(Clone, Debug)]
@@ -40,7 +40,12 @@ impl ClientHello {
         forward_mode: ForwardMode,
         expected_port_range: RangeInclusive<u16>,
     ) -> Self {
-        Self { uuid, token, forward_mode, expected_port_range }
+        Self {
+            uuid,
+            token,
+            forward_mode,
+            expected_port_range,
+        }
     }
 
     pub fn uuid(&self) -> Uuid {
@@ -71,18 +76,15 @@ impl ClientHello {
 
 impl From<ClientHello> for (Uuid, [u8; 32], ForwardMode, RangeInclusive<u16>) {
     fn from(hello: ClientHello) -> Self {
-        (hello.uuid, hello.token, hello.forward_mode, hello.expected_port_range)
+        (
+            hello.uuid,
+            hello.token,
+            hello.forward_mode,
+            hello.expected_port_range,
+        )
     }
 }
 
-
-/// Bitflags for ForwardMode
-/// High 5 bits are reserved for future use, so we only use the lower 3 bits for the current modes.
-/// The modes are:
-/// - 0b001 - TCP
-/// - 0b010 - UDP_NATIVE
-/// - 0b100 - UDP_QUIC
-/// UDP_NATIVE and UDP_QUIC cannot be enabled at the same time.
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct ForwardMode: u8 {
