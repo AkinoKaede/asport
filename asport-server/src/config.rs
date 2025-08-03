@@ -1,16 +1,20 @@
-use std::{
-    collections::{BTreeSet, HashMap}, fmt::Display, net::SocketAddr, ops::RangeInclusive,
-    path::PathBuf, str::FromStr, sync::OnceLock, time::Duration,
-};
-use std::net::IpAddr;
-
 use humantime::Duration as HumanDuration;
 use log::LevelFilter;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use serde::{de::Error as DeError, Deserialize, Deserializer};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt::Display,
+    net::{IpAddr, SocketAddr},
+    ops::{BitOr, RangeInclusive},
+    path::PathBuf,
+    str::FromStr,
+    sync::OnceLock,
+    time::Duration,
+};
 use uuid::Uuid;
 
-use crate::utils::{CongestionControl, load_certs, load_priv_key, Network};
+use crate::utils::{load_certs, load_priv_key, CongestionControl, Network};
 
 // TODO: need a better way to do this
 static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -34,10 +38,7 @@ pub struct Config {
     )]
     pub congestion_control: CongestionControl,
 
-    #[serde(
-        default = "default::alpn",
-        deserialize_with = "deserialize_alpn"
-    )]
+    #[serde(default = "default::alpn", deserialize_with = "deserialize_alpn")]
     pub alpn: Vec<Vec<u8>>,
 
     #[serde(default = "default::zero_rtt_handshake")]
@@ -108,11 +109,9 @@ impl Config {
         let base_path = path.parent();
         match base_path {
             Some(base_path) => {
-                CONFIG_BASE_PATH.set(base_path.to_path_buf()).map_err(
-                    |e| config::ConfigError::custom(
-                        format!("failed to set config path: {:?}", e)
-                    )
-                )?;
+                CONFIG_BASE_PATH.set(base_path.to_path_buf()).map_err(|e| {
+                    config::ConfigError::custom(format!("failed to set config path: {:?}", e))
+                })?;
             }
             None => {
                 return Err(config::ConfigError::custom("config path is not a file"));
@@ -151,7 +150,7 @@ mod default {
     }
 
     pub fn authentication_failed_reply() -> bool {
-        return true
+        return true;
     }
 
     pub fn task_negotiation_timeout() -> Duration {
@@ -178,7 +177,6 @@ mod default {
         LevelFilter::Warn
     }
 
-
     pub(crate) mod proxy {
         use std::collections::BTreeSet;
         use std::net::{IpAddr, Ipv6Addr};
@@ -194,7 +192,7 @@ mod default {
         }
 
         pub fn network() -> Network {
-            Network::Both
+            Network::TCP | Network::UDP
         }
     }
 }
@@ -233,7 +231,6 @@ where
         .map(|d| *d)
         .map_err(DeError::custom)
 }
-
 
 pub fn deserialize_ports<'de, D>(deserializer: D) -> Result<BTreeSet<u16>, D::Error>
 where
@@ -292,21 +289,16 @@ where
         #[serde(deserialize_with = "deserialize_from_str")]
         Single(Network),
 
-        Double(#[serde(deserialize_with = "deserialize_from_str")]Network,
-               #[serde(deserialize_with = "deserialize_from_str")]Network),
+        Double(
+            #[serde(deserialize_with = "deserialize_from_str")] Network,
+            #[serde(deserialize_with = "deserialize_from_str")] Network,
+        ),
     }
 
     let middle = Middle::deserialize(deserializer)?;
     match middle {
         Middle::Single(network) => Ok(network),
-        Middle::Double(a, b) => {
-            match (a, b) {
-                (Network::Tcp, Network::Udp) | (Network::Udp, Network::Tcp) |
-                (_, Network::Both) | (Network::Both, _) => Ok(Network::Both),
-                (Network::Tcp, Network::Tcp) => Ok(Network::Tcp),
-                (Network::Udp, Network::Udp) => Ok(Network::Udp),
-            }
-        }
+        Middle::Double(a, b) => Ok(a.bitor(b)),
     }
 }
 
@@ -340,7 +332,6 @@ where
     T::from_str(&s).map_err(DeError::custom)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,62 +339,76 @@ mod tests {
     #[test]
     fn test_deserialize_ports() {
         let s = r#"1"#;
-        let ports: BTreeSet<u16> = deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        let ports: BTreeSet<u16> =
+            deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
         assert_eq!(ports, vec![1].into_iter().collect());
 
         let s = r#"{"start": 1, "end": 5}"#;
-        let ports: BTreeSet<u16> = deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        let ports: BTreeSet<u16> =
+            deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
         assert_eq!(ports, vec![1, 2, 3, 4, 5].into_iter().collect());
 
         let s = r#"[1, 2, 3]"#;
-        let ports: BTreeSet<u16> = deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        let ports: BTreeSet<u16> =
+            deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
         assert_eq!(ports, vec![1, 2, 3].into_iter().collect());
 
         let s = r#"[{"start": 1, "end": 5}, 8, {"start": 2, "end": 3}]"#;
-        let ports: BTreeSet<u16> = deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        let ports: BTreeSet<u16> =
+            deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
         assert_eq!(ports, vec![1, 2, 3, 4, 5, 8].into_iter().collect());
 
         let s = r#"[]"#;
-        let ports: BTreeSet<u16> = deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        let ports: BTreeSet<u16> =
+            deserialize_ports(&mut serde_json::Deserializer::from_str(s)).unwrap();
         assert_eq!(ports, vec![].into_iter().collect());
     }
 
     #[test]
     fn test_deserialize_network() {
         let s = r#""tcp""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Tcp);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP);
 
         let s = r#""udp""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Udp);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::UDP);
 
         let s = r#""tcpudp""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
 
         let s = r#""tcp_udp""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
 
         let s = r#""tcp-udp""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
 
         let s = r#""all""#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
 
         let s = r#"["tcp", "tcp"]"#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Tcp);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP);
 
         let s = r#"["tcp", "all"]"#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
 
         let s = r#"["tcp", "udp"]"#;
-        let network: Network = deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
-        assert_eq!(network, Network::Both);
+        let network: Network =
+            deserialize_network(&mut serde_json::Deserializer::from_str(s)).unwrap();
+        assert_eq!(network, Network::TCP | Network::UDP);
     }
 }

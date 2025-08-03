@@ -33,7 +33,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use asport::{
-    Address, ForwardMode, Header,
+    Address, Flags, Header,
     model::{
         AssembleError,
         ClientHello as ClientHelloModel,
@@ -150,12 +150,12 @@ impl Connection<side::Client> {
         &self,
         uuid: Uuid,
         password: impl AsRef<[u8]>,
-        forward_mode: impl Into<ForwardMode>,
+        flags: impl Into<Flags>,
         expected_port_range: RangeInclusive<u16>,
     ) -> Result<(), Error> {
         let model = self
             .model
-            .send_client_hello(uuid, password, &self.keying_material_exporter(), forward_mode, expected_port_range);
+            .send_client_hello(uuid, password, &self.keying_material_exporter(), flags, expected_port_range);
 
         let mut send = self.conn.open_uni().await?;
         model.header().async_marshal(&mut send).await?;
@@ -419,8 +419,8 @@ impl ClientHello {
         self.model.token()
     }
 
-    pub fn forward_mode(&self) -> ForwardMode {
-        self.model.forward_mode()
+    pub fn flags(&self) -> Flags {
+        self.model.flags()
     }
 
     pub fn expected_port_range(&self) -> RangeInclusive<u16> {

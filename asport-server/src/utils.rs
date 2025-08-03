@@ -1,3 +1,5 @@
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use rustls_pemfile::Item;
 use std::{
     collections::BTreeSet,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -5,26 +7,27 @@ use std::{
     io::BufReader,
     iter,
     net::IpAddr,
-    ops::RangeInclusive,
+    ops::{BitAnd, RangeInclusive},
     path::Path,
     str::FromStr,
 };
-
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use rustls_pemfile::Item;
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
 use sysctl::CtlValue;
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd",
-    target_os = "linux", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "android"
+))]
 use sysctl::Sysctl;
 
-use asport::ForwardMode;
+use asport::Flags;
 
 use crate::error::Error;
 
 pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>>, Error> {
-    let mut file = BufReader::new(File::open(&path)
-        .map_err(|e| Error::Io(e))?);
+    let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
     let mut certs = Vec::new();
 
     while let Ok(Some(item)) = rustls_pemfile::read_one(&mut file) {
@@ -35,34 +38,37 @@ pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>
 
     // Der format
     if certs.is_empty() {
-        certs = vec![CertificateDer::from(fs::read(&path)
-            .map_err(|e| Error::Io(e))?)];
+        certs = vec![CertificateDer::from(
+            fs::read(&path).map_err(|e| Error::Io(e))?,
+        )];
     }
 
     Ok(certs)
 }
 
 pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, Error> {
-    let mut file = BufReader::new(
-        File::open(&path).map_err(|e| Error::Io(e))?
-    );
+    let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
     let mut priv_key: Option<PrivateKeyDer> = None;
 
     for item in iter::from_fn(|| rustls_pemfile::read_one(&mut file).transpose()) {
         match item {
-            Ok(Item::Pkcs1Key(key)) => { priv_key = Some(PrivateKeyDer::from(key)) }
-            Ok(Item::Pkcs8Key(key)) => { priv_key = Some(PrivateKeyDer::from(key)) }
-            Ok(Item::Sec1Key(key)) => { priv_key = Some(PrivateKeyDer::from(key)) }
+            Ok(Item::Pkcs1Key(key)) => priv_key = Some(PrivateKeyDer::from(key)),
+            Ok(Item::Pkcs8Key(key)) => priv_key = Some(PrivateKeyDer::from(key)),
+            Ok(Item::Sec1Key(key)) => priv_key = Some(PrivateKeyDer::from(key)),
             _ => {}
         }
     }
 
     match priv_key {
         Some(key) => Ok(key),
-        None => // Der format
-            fs::read(&path).map(PrivateKeyDer::try_from).map_err(
-                |e| Error::Io(e)
-            )?.map_err(|e| Error::InvalidPrivateKey(e)),
+        None =>
+        // Der format
+        {
+            fs::read(&path)
+                .map(PrivateKeyDer::try_from)
+                .map_err(|e| Error::Io(e))?
+                .map_err(|e| Error::InvalidPrivateKey(e))
+        }
     }
 }
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
@@ -72,7 +78,9 @@ pub fn ephemeral_port_range() -> RangeInclusive<u16> {
 
     if let (Ok(first_ctl), Ok(last_ctl)) = (first_ctl, last_ctl) {
         // Actually, the first and last values should be u16, but sysctl crate returns them as i32.
-        if let (Ok(CtlValue::Int(first)), Ok(CtlValue::Int(last))) = (first_ctl.value(), last_ctl.value()) {
+        if let (Ok(CtlValue::Int(first)), Ok(CtlValue::Int(last))) =
+            (first_ctl.value(), last_ctl.value())
+        {
             return (first as u16)..=(last as u16);
         }
     }
@@ -100,9 +108,13 @@ pub fn ephemeral_port_range() -> RangeInclusive<u16> {
     32768..=60999
 }
 
-
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "freebsd",
-    target_os = "linux", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "android"
+)))]
 pub fn ephemeral_port_range() -> RangeInclusive<u16> {
     // The suggested range by RFC6335 and IANA.
     // See also: https://tools.ietf.org/html/rfc6335
@@ -114,7 +126,6 @@ pub fn ephemeral_port_range() -> RangeInclusive<u16> {
     49152..=65535
 }
 
-
 pub enum CongestionControl {
     Cubic,
     NewReno,
@@ -125,41 +136,34 @@ impl FromStr for CongestionControl {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-          match s.to_lowercase().as_str() {
+        match s.to_lowercase().as_str() {
             "cubic" => Ok(Self::Cubic),
             "new_reno" | "newreno" => Ok(Self::NewReno),
             "bbr" => Ok(Self::Bbr),
-            _ => Err("invalid congestion control")
+            _ => Err("invalid congestion control"),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Network {
-    Tcp,
-    Udp,
-    Both,
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Network: u8 {
+        const TCP = 1 << 0;
+        const UDP = 1 << 1;
+    }
 }
 
 impl Network {
-    pub(crate) fn is_tcp(&self) -> bool {
-        matches!(self, Self::Tcp)
+    pub fn tcp_enabled(self) -> bool {
+        self.contains(Self::TCP)
     }
 
-    pub(crate) fn is_udp(&self) -> bool {
-        matches!(self, Self::Udp)
+    pub fn udp_enabled(self) -> bool {
+        self.contains(Self::UDP)
     }
 
-    pub(crate) fn is_both(&self) -> bool {
-        matches!(self, Self::Both)
-    }
-
-    pub(crate) fn tcp(&self) -> bool {
-        self.is_both() || self.is_tcp()
-    }
-
-    pub(crate) fn udp(&self) -> bool {
-        self.is_both() || self.is_udp()
+    pub fn both_enabled(self) -> bool {
+        self.intersects(Self::TCP | Self::UDP)
     }
 }
 
@@ -167,31 +171,35 @@ impl FromStr for Network {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-       match s.to_lowercase().as_str() {
-            "tcp" => Ok(Self::Tcp),
-            "udp" => Ok(Self::Udp),
-            "both" | "tcpudp" | "tcp_udp" | "tcp-udp" | "all" => Ok(Self::Both),
-            _ => Err("invalid network")
+        match s.to_lowercase().as_str() {
+            "tcp" => Ok(Self::TCP),
+            "udp" => Ok(Self::UDP),
+            "both" | "tcpudp" | "tcp_udp" | "tcp-udp" | "all" => Ok(Self::TCP | Self::UDP),
+            _ => Err("invalid network"),
         }
     }
 }
 
 impl Display for Network {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Self::Tcp => write!(f, "tcp"),
-            Self::Udp => write!(f, "udp"),
-            Self::Both => write!(f, "both"),
+        if self.both_enabled() {
+            write!(f, "both")
+        } else if self.tcp_enabled() {
+            write!(f, "tcp")
+        } else if self.udp_enabled() {
+            write!(f, "udp")
+        } else {
+            write!(f, "none")
         }
     }
 }
 
 pub fn merge_network(allow_network: Network, expected_network: Network) -> Result<Network, Error> {
-    match (allow_network, expected_network) {
-        (Network::Both, _) => Ok(expected_network),
-        (Network::Tcp, Network::Tcp) => Ok(Network::Tcp),
-        (Network::Udp, Network::Udp) => Ok(Network::Udp),
-        _ => Err(Error::NetworkDenied(expected_network)),
+    let allow_network = allow_network.bitand(expected_network);
+    if allow_network.is_empty() {
+        Err(Error::NetworkDenied(expected_network))
+    } else {
+        Ok(allow_network)
     }
 }
 
@@ -210,30 +218,32 @@ impl Display for UdpForwardMode {
     }
 }
 
-pub struct NetworkUdpForwardModeCombine(Network, UdpForwardMode);
+pub struct RemoteConfiguredFlgas(Network, UdpForwardMode);
 
-impl NetworkUdpForwardModeCombine {
+impl RemoteConfiguredFlgas {
     pub fn new(network: Network, mode: UdpForwardMode) -> Self {
         Self(network, mode)
     }
 }
 
-impl TryFrom<ForwardMode> for NetworkUdpForwardModeCombine {
+impl TryFrom<Flags> for RemoteConfiguredFlgas {
     type Error = Error;
-    fn try_from(mode: ForwardMode) -> Result<Self, Self::Error> {
-        match mode {
-            ForwardMode::TCP => Ok(Self::new(Network::Tcp, UdpForwardMode::Native)),
-            ForwardMode::UDP_NATIVE => Ok(Self::new(Network::Udp, UdpForwardMode::Native)),
-            ForwardMode::UDP_QUIC => Ok(Self::new(Network::Udp, UdpForwardMode::Quic)),
-            ForwardMode::TCP_UDP_NATIVE => Ok(Self::new(Network::Both, UdpForwardMode::Native)),
-            ForwardMode::TCP_UDP_QUIC => Ok(Self::new(Network::Both, UdpForwardMode::Quic)),
-            _ => Err(Error::InvalidForwardMode(mode)),
-        }
+    fn try_from(flags: Flags) -> Result<Self, Self::Error> {
+        // network is lower 2 bits of flags
+        let network = Network::from_bits_truncate(flags.bits());
+
+        let udp_forward_mode = if flags.contains(Flags::UDP_MODE_QUIC) {
+            UdpForwardMode::Quic
+        } else {
+            UdpForwardMode::Native
+        };
+
+        Ok(Self(network, udp_forward_mode))
     }
 }
 
-impl From<NetworkUdpForwardModeCombine> for (Network, UdpForwardMode) {
-    fn from(value: NetworkUdpForwardModeCombine) -> Self {
+impl From<RemoteConfiguredFlgas> for (Network, UdpForwardMode) {
+    fn from(value: RemoteConfiguredFlgas) -> Self {
         (value.0, value.1)
     }
 }
@@ -247,11 +257,13 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(password: Box<[u8]>,
-               bind_ip: IpAddr,
-               allow_ports: BTreeSet<u16>,
-               only_v6: Option<bool>,
-               allow_network: Network) -> Self {
+    pub fn new(
+        password: Box<[u8]>,
+        bind_ip: IpAddr,
+        allow_ports: BTreeSet<u16>,
+        only_v6: Option<bool>,
+        allow_network: Network,
+    ) -> Self {
         Self {
             password,
             bind_ip,

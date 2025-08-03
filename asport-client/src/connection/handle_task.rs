@@ -18,7 +18,7 @@ use asport_quinn::{Connect, Packet, ServerHello};
 
 use crate::{
     error::Error,
-    utils::{NetworkUdpForwardModeCombine, ProxyProtocol, UdpForwardMode, union_proxy_protocol_addresses},
+    utils::{ClientHelloFlagsBuilder, ProxyProtocol, UdpForwardMode, union_proxy_protocol_addresses},
 };
 
 use super::{
@@ -39,7 +39,7 @@ impl Connection {
         match self.model.client_hello(
             self.uuid,
             self.password.clone(),
-            NetworkUdpForwardModeCombine::new(self.network, self.udp_forward_mode),
+            ClientHelloFlagsBuilder::new(self.network, self.udp_forward_mode),
             self.expected_port_range,
         ).await {
             Ok(()) => log::info!("[client_hello] {uuid}", uuid = self.uuid),

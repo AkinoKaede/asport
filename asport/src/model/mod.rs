@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     Address, ClientHello as ClientHelloHeader, Connect as ConnectHeader,
-    Dissociate as DissociateHeader, ForwardMode, Heartbeat as HeartbeatHeader,
+    Dissociate as DissociateHeader, Flags, Heartbeat as HeartbeatHeader,
     Packet as PacketHeader, ServerHello as ServerHelloHeader,
 };
 
@@ -61,7 +61,7 @@ where
         uuid: Uuid,
         password: impl AsRef<[u8]>,
         exporter: &impl KeyingMaterialExporter,
-        forward_mode: impl Into<ForwardMode>,
+        forward_mode: impl Into<Flags>,
         expected_port_range: RangeInclusive<u16>,
     ) -> ClientHello<side::Tx> {
         ClientHello::<side::Tx>::new(uuid, password, exporter, forward_mode, expected_port_range)

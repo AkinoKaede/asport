@@ -73,15 +73,14 @@ impl Connection {
                              only_v6: Option<bool>,
                              network: &Network) -> Result<u16, Error> {
         let ports = {
-            match network {
-                Network::Tcp | Network::Udp => {
-                    match bind_ports == *EPHEMERAL_PORTS {
-                        // workaround for ephemeral ports, make it chosen by OS.
-                        true => vec![0],
-                        false => bind_ports.into_iter().collect(),
-                    }
+            if network.both_enabled() {
+                bind_ports.into_iter().collect()
+            } else {
+                match bind_ports == *EPHEMERAL_PORTS {
+                    // workaround for ephemeral ports, make it chosen by OS.
+                    true => vec![0],
+                    false => bind_ports.into_iter().collect(),
                 }
-                Network::Both => bind_ports.into_iter().collect(),
             }
         };
 
@@ -92,7 +91,7 @@ impl Connection {
 
         for port in ports {
             let tcp_listener = async {
-                if network.tcp() {
+                if network.tcp_enabled() {
                     return Some(self.bind_tcp(bind_ip, port, only_v6).await);
                 }
 
@@ -100,7 +99,7 @@ impl Connection {
             }.await;
 
             let udp_socket = async {
-                if network.udp() {
+                if network.udp_enabled() {
                     return Some(self.bind_udp(bind_ip, port, only_v6).await);
                 }
 

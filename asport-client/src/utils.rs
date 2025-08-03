@@ -12,7 +12,7 @@ use rustls_pemfile::Item;
 use serde::{de::Error as DeError, Deserialize, Deserializer};
 use tokio::net;
 
-use asport::ForwardMode;
+use asport::Flags;
 
 use crate::error::Error;
 
@@ -155,7 +155,7 @@ impl FromStr for Network {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UdpForwardMode {
     Native,
     Quic,
@@ -212,37 +212,37 @@ impl Display for ProxyProtocol {
     }
 }
 
-pub struct NetworkUdpForwardModeCombine(Network, UdpForwardMode);
+pub struct ClientHelloFlagsBuilder(Network, UdpForwardMode);
 
-impl NetworkUdpForwardModeCombine {
+impl ClientHelloFlagsBuilder {
     pub fn new(network: Network, mode: UdpForwardMode) -> Self {
         Self(network, mode)
     }
 }
 
-impl From<NetworkUdpForwardModeCombine> for ForwardMode {
-    fn from(value: NetworkUdpForwardModeCombine) -> Self {
-        let (network, mode) = (value.0, value.1);
+impl From<ClientHelloFlagsBuilder> for Flags {
+    fn from(value: ClientHelloFlagsBuilder) -> Self {
+        let (network, udp_forward_mode) = (value.0, value.1);
 
-        let mut forward_mode = ForwardMode::empty();
+        let mut flags = Flags::empty();
         if network.tcp() {
-            forward_mode.insert(ForwardMode::TCP);
+            flags.insert(Flags::TCP);
         }
 
         if network.udp() {
-            match mode {
-                UdpForwardMode::Native => forward_mode.insert(ForwardMode::UDP_NATIVE),
-                UdpForwardMode::Quic => forward_mode.insert(ForwardMode::UDP_QUIC),
+            flags.insert(Flags::UDP_ENABLED);
+            if udp_forward_mode == UdpForwardMode::Quic {
+                flags.insert(Flags::UDP_MODE_QUIC);
             }
         }
 
-        forward_mode
+        flags
     }
 }
 
-impl From<(Network, UdpForwardMode)> for NetworkUdpForwardModeCombine {
+impl From<(Network, UdpForwardMode)> for ClientHelloFlagsBuilder {
     fn from(value: (Network, UdpForwardMode)) -> Self {
-        NetworkUdpForwardModeCombine::new(value.0, value.1)
+        ClientHelloFlagsBuilder::new(value.0, value.1)
     }
 }
 

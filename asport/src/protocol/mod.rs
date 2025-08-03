@@ -6,7 +6,7 @@ use std::{
 
 #[allow(unused_imports)]
 pub use self::{
-    client_hello::{ClientHello, ForwardMode, InvalidForwardMode},
+    client_hello::{ClientHello, Flags, InvalidFlags},
     connect::Connect,
     dissociate::Dissociate,
     heartbeat::Heartbeat,

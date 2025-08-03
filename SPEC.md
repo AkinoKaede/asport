@@ -101,16 +101,16 @@ header expected_port_range_h {
     bit<16> end;
 };
 
-enum bit<8> ForwardMode {
+enum bit<8> Flags {
     Tcp = 1 << 0;
-    UdpNative = 1 << 1;
-    UdpQuic = 1 << 2;
+    UdpEnabled = 1 << 1;
+    UdpModeQuic = 1 << 2;
 };
 
 header client_hello_h {
     bit<128> uuid;
     bit<256> token;
-    ForwardMode forward_mode;
+    Flags flags;
     expected_port_range_h expected_port_range;
 };
 ```

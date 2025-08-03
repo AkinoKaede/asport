@@ -101,10 +101,14 @@ impl Connection {
                 dst_addr = addr,
             );
 
-
             let sessions = match self.udp_sessions.lock().await.clone() {
                 Some(sessions) => sessions,
-                None => { return Err(Error::from(IoError::new(ErrorKind::NotFound, "no UDP sessions"))); }
+                None => {
+                    return Err(Error::from(IoError::new(
+                        ErrorKind::NotFound,
+                        "no UDP sessions",
+                    )));
+                }
             };
 
             let socket_addr = match addr {
@@ -117,8 +121,19 @@ impl Connection {
             // Validate destination address
             // Because client can send packet with any address, we need to validate it.
             // If not, it can be used for proxy.
-            if !self.udp_sessions.lock().await.clone().unwrap().validate(assoc_id, socket_addr) { // unwrap() is safe because of it's checked.
-                return Err(Error::from(IoError::new(ErrorKind::InvalidInput, "destination address is not valid")));
+            if !self
+                .udp_sessions
+                .lock()
+                .await
+                .clone()
+                .unwrap()
+                .validate(assoc_id, socket_addr)
+            {
+                // unwrap() is safe because of it's checked.
+                return Err(Error::from(IoError::new(
+                    ErrorKind::InvalidInput,
+                    "destination address is not valid",
+                )));
             }
 
             sessions.send_to(pkt, socket_addr).await
@@ -135,7 +150,6 @@ impl Connection {
         }
     }
 
-
     pub async fn dissociate(&self, assoc_id: u16) -> Result<(), Error> {
         log::info!(
             "[{id:#010x}] [{addr}] [{auth}] [dissociate] [{assoc_id:#06x}]",
@@ -146,7 +160,8 @@ impl Connection {
         match self.model.dissociate(assoc_id).await {
             Ok(()) => Ok(()),
             Err(err) => {
-                log::warn!("[{id:#010x}] [{addr}] [{auth}] [dissociate] [{assoc_id:#06x}] {err}",
+                log::warn!(
+                    "[{id:#010x}] [{addr}] [{auth}] [dissociate] [{assoc_id:#06x}] {err}",
                     id = self.id(),
                     addr = self.inner.remote_address(),
                     auth = self.auth,
@@ -215,7 +230,13 @@ impl Connection {
         };
     }
 
-    pub async fn forward_packet(self, pkt: Bytes, addr: Address, assoc_id: u16, dissociate_before_forward: bool) {
+    pub async fn forward_packet(
+        self,
+        pkt: Bytes,
+        addr: Address,
+        assoc_id: u16,
+        dissociate_before_forward: bool,
+    ) {
         if dissociate_before_forward {
             let _ = self.dissociate(assoc_id).await;
         }

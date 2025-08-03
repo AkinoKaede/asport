@@ -65,7 +65,7 @@ impl ClientHello {
     fn write(&self, buf: &mut impl BufMut) {
         buf.put_slice(self.uuid().as_ref());
         buf.put_slice(&self.token());
-        buf.put_u8(self.forward_mode().into());
+        buf.put_u8(self.flags().into());
         buf.put_u16(*self.expected_port_range().start());
         buf.put_u16(*self.expected_port_range().end());
     }

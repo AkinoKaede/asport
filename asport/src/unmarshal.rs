@@ -8,8 +8,8 @@ use futures_util::{AsyncRead, AsyncReadExt};
 use thiserror::Error;
 use uuid::{Error as UuidError, Uuid};
 
-use crate::{Address, ClientHello, Connect, Dissociate, ForwardMode, Header, Heartbeat, Packet,
-            protocol::InvalidForwardMode, ServerHello, VERSION,
+use crate::{Address, ClientHello, Connect, Dissociate, Flags, Header, Heartbeat, Packet,
+            protocol::InvalidFlags, ServerHello, VERSION,
 };
 
 impl Header {
@@ -147,7 +147,7 @@ impl ClientHello {
         s.read_exact(&mut buf).await?;
         let uuid = Uuid::from_slice(&buf[..16])?;
         let token = TryFrom::try_from(&buf[16..48]).unwrap();
-        let forward_mode = ForwardMode::try_from(buf[48])
+        let forward_mode = Flags::try_from(buf[48])
             .map_err(UnmarshalError::InvalidForwardMode)?;
         let start = u16::from_be_bytes([buf[49], buf[50]]);
         let end = u16::from_be_bytes([buf[51], buf[52]]);
@@ -162,7 +162,7 @@ impl ClientHello {
         s.read_exact(&mut buf)?;
         let uuid = Uuid::from_slice(&buf[..16])?;
         let token = TryFrom::try_from(&buf[16..48]).unwrap();
-        let forward_mode = ForwardMode::try_from(buf[48])
+        let forward_mode = Flags::try_from(buf[48])
             .map_err(UnmarshalError::InvalidForwardMode)?;
         let start = u16::from_be_bytes([buf[49], buf[50]]);
         let end = u16::from_be_bytes([buf[51], buf[52]]);
@@ -309,7 +309,7 @@ pub enum UnmarshalError {
     #[error("invalid handshake code: {0}")]
     InvalidHandshakeCode(u8),
     #[error(transparent)]
-    InvalidForwardMode(#[from] InvalidForwardMode),
+    InvalidForwardMode(#[from] InvalidFlags),
     #[error("address parsing error: {0}")]
     AddressParse(#[from] FromUtf8Error),
 }

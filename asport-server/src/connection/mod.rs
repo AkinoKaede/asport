@@ -1,39 +1,29 @@
 use std::{
     collections::HashMap,
-    sync::{
-        Arc,
-        atomic::AtomicU32,
-    },
+    sync::{atomic::AtomicU32, Arc},
     time::Duration,
 };
 
 use crossbeam_utils::atomic::AtomicCell;
 use quinn::{Connecting, Connection as QuinnConnection, VarInt};
 use register_count::Counter;
-use tokio::{
-    net::TcpListener,
-    sync::Mutex,
-    time,
-};
+use tokio::{net::TcpListener, sync::Mutex, time};
 use uuid::Uuid;
 
-use asport::{ForwardMode, ServerHello};
-use asport_quinn::{ClientHello, Connection as Model, side};
+use asport::{Flags, ServerHello};
+use asport_quinn::{side, ClientHello, Connection as Model};
 
 use crate::{
     error::Error,
-    utils::{self, Network, NetworkUdpForwardModeCombine, UdpForwardMode, User},
+    utils::{self, Network, RemoteConfiguredFlgas, UdpForwardMode, User},
 };
 
-use self::{
-    authenticated::Authenticated,
-    udp_sessions::UdpSessions,
-};
+use self::{authenticated::Authenticated, udp_sessions::UdpSessions};
 
 mod authenticated;
+mod handle_bind;
 mod handle_stream;
 mod handle_task;
-mod handle_bind;
 mod udp_sessions;
 
 pub const ERROR_CODE: VarInt = VarInt::from_u32(0);
@@ -181,7 +171,7 @@ impl Connection {
         }
 
         let (network, udp_forward_mode) =
-            <ForwardMode as TryInto<NetworkUdpForwardModeCombine>>::try_into(hello.forward_mode())?
+            <Flags as TryInto<RemoteConfiguredFlgas>>::try_into(hello.flags())?
                 .into();
         self.udp_forward_mode.store(Some(udp_forward_mode));
 
@@ -192,9 +182,11 @@ impl Connection {
                 self.server_hello(ServerHello::Success(listen_port)).await;
                 self.auth.set(hello.uuid(), listen_port);
             }
-            Err(Error::AuthFailed(_)) => if self.authentication_failed_reply {
-                self.server_hello(ServerHello::AuthFailed).await;
-            },
+            Err(Error::AuthFailed(_)) => {
+                if self.authentication_failed_reply {
+                    self.server_hello(ServerHello::AuthFailed).await;
+                }
+            }
             Err(Error::BindFailed) => self.server_hello(ServerHello::BindFailed).await,
             Err(Error::PortDenied) => self.server_hello(ServerHello::PortDenied).await,
             Err(Error::NetworkDenied(_)) => self.server_hello(ServerHello::NetworkDenied).await,
@@ -205,22 +197,26 @@ impl Connection {
     }
 
     async fn process_handshake(&self, hello: &ClientHello, network: Network) -> Result<u16, Error> {
-        let user = self.users.get(&hello.uuid()).ok_or(Error::AuthFailed(hello.uuid()))?;
+        let user = self
+            .users
+            .get(&hello.uuid())
+            .ok_or(Error::AuthFailed(hello.uuid()))?;
         if !hello.validate(user.password()) {
             return Err(Error::AuthFailed(hello.uuid()));
         }
 
         let range = hello.expected_port_range();
 
-        let ports = user.allow_ports().into_iter()
+        let ports = user
+            .allow_ports()
+            .into_iter()
             .filter(|port| range.contains(port))
             .collect();
 
         let network = utils::merge_network(user.allow_network().clone(), network)?;
 
-
-        self.bind(user.listen_ip(), ports,
-                  user.only_v6(), &network).await
+        self.bind(user.listen_ip(), ports, user.only_v6(), &network)
+            .await
     }
 
     async fn handle_tcp_listener(self, listener: TcpListener) {

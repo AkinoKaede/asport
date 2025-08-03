@@ -1,11 +1,11 @@
 use std::{
     fmt::{Debug, Formatter, Result as FmtResult},
-    ops::RangeInclusive
+    ops::RangeInclusive,
 };
 
 use uuid::Uuid;
 
-use crate::{ClientHello as ClientHelloHeader, ForwardMode, Header};
+use crate::{ClientHello as ClientHelloHeader, Flags, Header};
 
 use super::side::{self, Side};
 
@@ -24,7 +24,7 @@ impl ClientHello<side::Tx> {
         uuid: Uuid,
         password: impl AsRef<[u8]>,
         exporter: &impl KeyingMaterialExporter,
-        forward_mode: impl Into<ForwardMode>,
+        flags: impl Into<Flags>,
         expected_port_range: RangeInclusive<u16>,
     ) -> Self {
         Self {
@@ -32,7 +32,7 @@ impl ClientHello<side::Tx> {
                 header: Header::ClientHello(ClientHelloHeader::new(
                     uuid,
                     exporter.export_keying_material(uuid.as_ref(), password.as_ref()),
-                    forward_mode.into(),
+                    flags.into(),
                     expected_port_range,
                 )),
             }),
@@ -42,14 +42,18 @@ impl ClientHello<side::Tx> {
 
     /// Returns the header of the `ClientHello` command
     pub fn header(&self) -> &Header {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         &tx.header
     }
 }
 
 impl Debug for ClientHello<side::Tx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Authenticate")
             .field("header", &tx.header)
             .finish()
@@ -59,7 +63,7 @@ impl Debug for ClientHello<side::Tx> {
 struct Rx {
     uuid: Uuid,
     token: [u8; 32],
-    forward_mode: ForwardMode,
+    flags: Flags,
     expected_port_range: RangeInclusive<u16>,
 }
 
@@ -67,24 +71,33 @@ impl ClientHello<side::Rx> {
     pub(super) fn new(
         uuid: Uuid,
         token: [u8; 32],
-        forward_mode: ForwardMode,
+        flags: Flags,
         expected_port_range: RangeInclusive<u16>,
     ) -> Self {
         Self {
-            inner: Side::Rx(Rx { uuid, token, forward_mode, expected_port_range }),
+            inner: Side::Rx(Rx {
+                uuid,
+                token,
+                flags,
+                expected_port_range,
+            }),
             _marker: side::Rx,
         }
     }
 
     /// Returns the UUID of the peer
     pub fn uuid(&self) -> Uuid {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         rx.uuid
     }
 
     /// Returns the token of the peer
     pub fn token(&self) -> [u8; 32] {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         rx.token
     }
 
@@ -94,30 +107,38 @@ impl ClientHello<side::Rx> {
         password: impl AsRef<[u8]>,
         exporter: &impl KeyingMaterialExporter,
     ) -> bool {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         rx.token == exporter.export_keying_material(rx.uuid.as_ref(), password.as_ref())
     }
 
     /// Returns the forward mode of the peer
-    pub fn forward_mode(&self) -> ForwardMode {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
-        rx.forward_mode
+    pub fn flags(&self) -> Flags {
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
+        rx.flags
     }
 
     /// Returns the expected port range of the peer
     pub fn expected_port_range(&self) -> RangeInclusive<u16> {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         rx.expected_port_range.clone()
     }
 }
 
 impl Debug for ClientHello<side::Rx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Authenticate")
             .field("uuid", &rx.uuid)
             .field("token", &rx.token)
-            .field("forward_mode", &rx.forward_mode)
+            .field("flags", &rx.flags)
             .field("expected_port_range", &rx.expected_port_range)
             .finish()
     }

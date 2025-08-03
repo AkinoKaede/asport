@@ -154,6 +154,7 @@ dependencies = [
  "asport",
  "asport-quinn",
  "bimap",
+ "bitflags",
  "bytes",
  "clap",
  "config",

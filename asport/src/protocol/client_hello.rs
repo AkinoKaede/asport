@@ -7,7 +7,7 @@ use uuid::Uuid;
 /// Command `ClientHello`
 /// ```plain
 /// +------+-------+-------+-------+-------+
-/// | UUID | TOKEN |  FM   | EPRS  | EPRE  |
+/// | UUID | TOKEN | FLAGS | EPRS  | EPRE  |
 /// +------+-------+-------+-------+-------+
 /// |  16  |  32   |   1   |   2   |   2   |
 /// +------+-------+-------+-------+-------+
@@ -17,17 +17,17 @@ use uuid::Uuid;
 ///
 /// - `UUID` - client UUID
 /// - `TOKEN` - client token. The client raw password is hashed into a 256-bit long ¬token using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. While exporting, the `label` should be the client UUID and the `context` should be the raw password.
-/// - `FM` - forward mode. The forward mode of the client. It is a bitmask that indicates which protocols the client supports for port forwarding. High 5 bits are reserved for future use and must be set to 0. The low 3 bits are used as follows:
+/// - `FLAGS` - Flags. It is a bitmask that indicates which protocols the client supports for port forwarding currently. High 5 bits are reserved for future use and must be set to 0. The low 3 bits are used as follows:
 ///     - `0b001` - TCP
-///     - `0b010` - UDP (native)
-///     - `0b100` - UDP (QUIC)
+///     - `0b010` - UDP Enabled
+///     - `0b100` - UDP Mode QUIC (if UDP is enabled, this flag indicates that the client enables QUIC mode; if not set, it means native UDP mode is enabled).
 /// - `EPRS` - expected port range start. The start of the port range that the client expects to be forwarded.
 /// - `EPRE` - expected port range end. The end of the port range that the client expects to be forwarded. It must be greater than or equal to `EPRS`.
 #[derive(Clone, Debug)]
 pub struct ClientHello {
     uuid: Uuid,
     token: [u8; 32],
-    forward_mode: ForwardMode,
+    flags: Flags,
     expected_port_range: RangeInclusive<u16>,
 }
 
@@ -37,13 +37,13 @@ impl ClientHello {
     pub const fn new(
         uuid: Uuid,
         token: [u8; 32],
-        forward_mode: ForwardMode,
+        flags: Flags,
         expected_port_range: RangeInclusive<u16>,
     ) -> Self {
         Self {
             uuid,
             token,
-            forward_mode,
+            flags,
             expected_port_range,
         }
     }
@@ -56,8 +56,8 @@ impl ClientHello {
         self.token
     }
 
-    pub fn forward_mode(&self) -> ForwardMode {
-        self.forward_mode
+    pub fn flags(&self) -> Flags {
+        self.flags
     }
 
     pub fn expected_port_range(&self) -> RangeInclusive<u16> {
@@ -74,12 +74,12 @@ impl ClientHello {
     }
 }
 
-impl From<ClientHello> for (Uuid, [u8; 32], ForwardMode, RangeInclusive<u16>) {
+impl From<ClientHello> for (Uuid, [u8; 32], Flags, RangeInclusive<u16>) {
     fn from(hello: ClientHello) -> Self {
         (
             hello.uuid,
             hello.token,
-            hello.forward_mode,
+            hello.flags,
             hello.expected_port_range,
         )
     }
@@ -87,55 +87,37 @@ impl From<ClientHello> for (Uuid, [u8; 32], ForwardMode, RangeInclusive<u16>) {
 
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct ForwardMode: u8 {
+    pub struct Flags: u8 {
         const TCP = 1 << 0;
-        const UDP_NATIVE = 1 << 1;
-        const UDP_QUIC = 1 << 2;
-
-        // Combined modes
-        const TCP_UDP_NATIVE = Self::TCP.bits() | Self::UDP_NATIVE.bits();
-        const TCP_UDP_QUIC = Self::TCP.bits() | Self::UDP_QUIC.bits();
-    }
-}
-
-impl ForwardMode {
-    pub fn tcp(&self) -> bool {
-        self.contains(ForwardMode::TCP)
-    }
-
-    pub fn udp(&self) -> bool {
-        self.contains(ForwardMode::UDP_NATIVE) || self.contains(ForwardMode::UDP_QUIC)
-    }
-
-    pub fn both(&self) -> bool {
-        self.contains(ForwardMode::TCP_UDP_NATIVE) || self.contains(ForwardMode::TCP_UDP_QUIC)
+        const UDP_ENABLED = 1 << 1;
+        const UDP_MODE_QUIC = 1 << 2; // if UDP is enabled, this flag indicates that the client enables QUIC mode; if not set, it means native UDP mode is enabled
     }
 }
 
 #[derive(Debug, Error)]
-#[error("invalid forward mode: {0}")]
-pub struct InvalidForwardMode(u8);
+#[error("invalid flags: {0}")]
+pub struct InvalidFlags(u8);
 
-impl TryFrom<u8> for ForwardMode {
-    type Error = InvalidForwardMode;
+impl TryFrom<u8> for Flags {
+    type Error = InvalidFlags;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match ForwardMode::from_bits(value) {
-            Some(mode) => Ok(mode),
-            None => Err(InvalidForwardMode(value)),
+        match Flags::from_bits(value) {
+            Some(flags) => Ok(flags),
+            None => Err(InvalidFlags(value)),
         }
     }
 }
 
-impl From<ForwardMode> for u8 {
-    fn from(mode: ForwardMode) -> Self {
+impl From<Flags> for u8 {
+    fn from(mode: Flags) -> Self {
         mode.bits()
     }
 }
 
-impl std::fmt::Display for ForwardMode {
+impl std::fmt::Display for Flags {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Display the forward mode as a bit sequence (binary)
+        // Display the flags as a bit sequence (binary)
         write!(f, "{:03b}", self.bits())
     }
 }
