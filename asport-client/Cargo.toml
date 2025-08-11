@@ -39,4 +39,4 @@ uuid = { version = "1.10.0", default-features = false, features = ["serde", "std
 serde_json = { version = "1.0.127", default-features = false, features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
-xdg = { version = "2.5.2", default-features = false }
+xdg = { version = "3.0.0", default-features = false }
