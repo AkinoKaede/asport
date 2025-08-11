@@ -21,7 +21,7 @@ bytes = { version = "1.6.1", default-features = false, features = ["std"], optio
 futures-util = { version = "0.3.28", default-features = false, features = ["io", "std"], optional = true }
 parking_lot = { version = "0.12.1", default-features = false, optional = true }
 register-count = { version = "0.1.0", default-features = false, features = ["std"], optional = true }
-thiserror = { version = "1.0.62", default-features = false }
+thiserror = { version = "2.0.12", default-features = false }
 uuid = { version = "1.10.0", default-features = false, features = ["std"] }
 
 [dev-dependencies]
