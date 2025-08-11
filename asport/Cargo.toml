@@ -1,6 +1,6 @@
 [package]
 name = "asport"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "An implementation of ASPORT protocol."
 categories = ["network-programming"]
