@@ -1,6 +1,6 @@
 [package]
 name = "asport-server"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "A simple Asport server implementation."
 categories = ["network-programming"]
