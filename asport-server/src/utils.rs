@@ -3,8 +3,8 @@ use rustls_pemfile::Item;
 use std::{
     collections::BTreeSet,
     fmt::{Display, Formatter, Result as FmtResult},
-    fs::{self, File},
-    io::BufReader,
+    fs::{File},
+    io::{BufReader, Read},
     iter,
     net::IpAddr,
     ops::{BitAnd, RangeInclusive},
@@ -30,17 +30,34 @@ pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>
     let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
     let mut certs = Vec::new();
 
-    while let Ok(Some(item)) = rustls_pemfile::read_one(&mut file) {
-        if let Item::X509Certificate(cert) = item {
-            certs.push(cert);
+    let mut certs_bytes = Vec::new();
+    file.read_to_end(&mut certs_bytes).map_err(|e| Error::Io(e))?;
+
+    // Try to read PEM format first
+    match parse_pem_certs(certs_bytes.clone()) {
+        Ok(parsed_certs) => {
+            certs.extend(parsed_certs);
+        }
+        Err(_) => {
+            // If PEM parsing fails, try to read DER format
+            if certs.is_empty() {
+                certs = vec![CertificateDer::from(certs_bytes)];
+            }
         }
     }
 
-    // Der format
-    if certs.is_empty() {
-        certs = vec![CertificateDer::from(
-            fs::read(&path).map_err(|e| Error::Io(e))?,
-        )];
+
+    Ok(certs)
+}
+
+pub fn parse_pem_certs(pem_text: Vec<u8>) -> Result<Vec<CertificateDer<'static>>, Error> {
+    let mut certs = Vec::new();
+    let mut reader = BufReader::new(pem_text.as_slice());
+
+    while let Ok(Some(item)) = rustls_pemfile::read_one(&mut reader) {
+        if let Item::X509Certificate(cert) = item {
+            certs.push(cert);
+        }
     }
 
     Ok(certs)
@@ -49,8 +66,32 @@ pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>
 pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, Error> {
     let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
     let mut priv_key: Option<PrivateKeyDer> = None;
+    let mut key_bytes = Vec::new();
+    file.read_to_end(&mut key_bytes).map_err(|e| Error::Io(e))?;
+    // Try to read PEM format first
+    match parse_pem_priv_key(key_bytes.clone()) {
+        Ok(parsed_key) => {
+            priv_key = Some(parsed_key);
+        }
+        Err(_) => {
+            // If PEM parsing fails, try to read DER format
+            if priv_key.is_none() {
+                priv_key = Some(PrivateKeyDer::try_from(key_bytes).map_err(|e| Error::InvalidPrivateKey(e))?);
+            }
+        }
+    }
 
-    for item in iter::from_fn(|| rustls_pemfile::read_one(&mut file).transpose()) {
+    match priv_key {
+        Some(key) => Ok(key),
+        None => Err(Error::InvalidPrivateKey("No valid private key found".into())),
+    }
+}
+
+pub fn parse_pem_priv_key(pem_text: Vec<u8>) -> Result<PrivateKeyDer<'static>, Error> {
+    let mut reader = BufReader::new(pem_text.as_slice());
+    let mut priv_key: Option<PrivateKeyDer> = None;
+
+    for item in iter::from_fn(|| rustls_pemfile::read_one(&mut reader).transpose()) {
         match item {
             Ok(Item::Pkcs1Key(key)) => priv_key = Some(PrivateKeyDer::from(key)),
             Ok(Item::Pkcs8Key(key)) => priv_key = Some(PrivateKeyDer::from(key)),
@@ -61,16 +102,10 @@ pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, 
 
     match priv_key {
         Some(key) => Ok(key),
-        None =>
-        // Der format
-        {
-            fs::read(&path)
-                .map(PrivateKeyDer::try_from)
-                .map_err(|e| Error::Io(e))?
-                .map_err(|e| Error::InvalidPrivateKey(e))
-        }
+        None => Err(Error::InvalidPrivateKey("No valid private key found".into())),
     }
 }
+
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
 pub fn ephemeral_port_range() -> RangeInclusive<u16> {
     let first_ctl = sysctl::Ctl::new("net.inet.ip.portrange.first");

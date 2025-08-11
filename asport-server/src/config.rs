@@ -14,7 +14,7 @@ use std::{
 };
 use uuid::Uuid;
 
-use crate::utils::{load_certs, load_priv_key, CongestionControl, Network};
+use crate::utils::{load_certs, load_priv_key, parse_pem_certs, parse_pem_priv_key, CongestionControl, Network};
 
 // TODO: need a better way to do this
 static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -306,7 +306,13 @@ pub fn deserialize_certs<'de, D>(deserializer: D) -> Result<Vec<CertificateDer<'
 where
     D: Deserializer<'de>,
 {
-    let path = PathBuf::deserialize(deserializer)?;
+    let str = String::deserialize(deserializer)?;
+
+    if str.contains("-----BEGIN CERTIFICATE-----") {
+        return parse_pem_certs(str.into_bytes()).map_err(DeError::custom);
+    }
+
+    let path = PathBuf::from(str);
     let path = CONFIG_BASE_PATH.get().unwrap().join(path);
 
     load_certs(path).map_err(DeError::custom)
@@ -316,7 +322,15 @@ pub fn deserialize_priv_key<'de, D>(deserializer: D) -> Result<PrivateKeyDer<'st
 where
     D: Deserializer<'de>,
 {
-    let path = PathBuf::deserialize(deserializer)?;
+    let str = String::deserialize(deserializer)?;
+    if str.contains("-----BEGIN PRIVATE KEY-----")
+        || str.contains("-----BEGIN RSA PRIVATE KEY-----")
+        || str.contains("-----BEGIN EC PRIVATE KEY-----")
+    {
+        return parse_pem_priv_key(str.into_bytes()).map_err(DeError::custom);
+    }
+
+    let path = PathBuf::from(str);
     let path = CONFIG_BASE_PATH.get().unwrap().join(path);
 
     load_priv_key(path).map_err(DeError::custom)

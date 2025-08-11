@@ -198,7 +198,7 @@ mod default {
 
         pub fn default() -> RootCertStore {
             let paths: Vec<PathBuf> = Vec::new();
-            match load_certs(paths, false) {
+            match load_certs(paths, None, false) {
                 Ok(certs) => certs,
                 Err(err) => {
                     log::error!("failed to load certificates: {}", err);
@@ -361,6 +361,7 @@ where
     struct Certificates {
         #[serde(default = "default::certificates::paths")]
         paths: Vec<PathBuf>,
+        pem: Option<String>,
         #[serde(default = "default::certificates::disable_native")]
         disable_native: bool,
     }
@@ -375,7 +376,7 @@ where
         .map(|path| base_path.join(path))
         .collect();
 
-    match load_certs(paths, certs_cfg.disable_native) {
+    match load_certs(paths, certs_cfg.pem, certs_cfg.disable_native) {
         Ok(certs) => Ok(certs),
         Err(err) => Err(DeError::custom(err)),
     }

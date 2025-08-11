@@ -5,12 +5,12 @@
 # Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
 server = "[::]:443"
 
-# Path to the certificate file.
-# Note: DER and PEM format are supported.
+# Path to the certificate file or the certificate in PEM format.
+# Note: DER and PEM format are supported for file.
 certificate = "path/to/cert.pem"
 
-# Path to the private key file.
-# Note: DER and PEM format are supported.
+# Path to the private key file or the private key in PEM format.
+# Note: DER and PEM format are supported for file.
 private_key = "path/to/key.pem"
 
 # Congestion control algorithm.

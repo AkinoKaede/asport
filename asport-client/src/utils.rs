@@ -1,7 +1,7 @@
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     fs::{self, File},
-    io::BufReader,
+    io::{BufReader, Read},
     net::{IpAddr, SocketAddr},
     path::Path,
     str::FromStr,
@@ -18,23 +18,35 @@ use crate::error::Error;
 
 pub fn load_certs<P: AsRef<Path>>(
     paths: Vec<P>,
+    pem: Option<String>,
     disable_native: bool,
 ) -> Result<RootCertStore, Error> {
     let mut certs = RootCertStore::empty();
 
     for path in &paths {
         let mut file = BufReader::new(File::open(path)?);
-
-        while let Ok(Some(item)) = rustls_pemfile::read_one(&mut file) {
-            if let Item::X509Certificate(cert) = item {
-                certs.add(cert)?;
+        let mut certs_bytes = Vec::new();
+        file.read_to_end(&mut certs_bytes)?;
+        // Try to read PEM format first
+        match parse_pem_certs(certs_bytes) {
+            Ok(parsed_certs) => {
+                for cert in parsed_certs {
+                    let _ = certs.add(cert);
+                }
+            }
+            Err(_) => {
+                // If PEM parsing fails, try to read DER format
+                if certs.is_empty() {
+                    certs.add(CertificateDer::from(fs::read(path)?))?;
+                }
             }
         }
     }
 
-    if certs.is_empty() {
-        for path in &paths {
-            certs.add(CertificateDer::from(fs::read(path)?))?;
+    if let Some(pem_text) = pem {
+        let pem_certs = parse_pem_certs(pem_text.into_bytes())?;
+        for cert in pem_certs {
+            let _ = certs.add(cert);
         }
     }
 
@@ -48,6 +60,19 @@ pub fn load_certs<P: AsRef<Path>>(
         native_certs.certs.into_iter().for_each(|cert| {
             let _ = certs.add(cert);
         });
+    }
+
+    Ok(certs)
+}
+
+pub fn parse_pem_certs(pem_text: Vec<u8>) -> Result<Vec<CertificateDer<'static>>, Error> {
+    let mut certs = Vec::new();
+    let mut reader = BufReader::new(pem_text.as_slice());
+
+    while let Ok(Some(item)) = rustls_pemfile::read_one(&mut reader) {
+        if let Item::X509Certificate(cert) = item {
+            certs.push(cert);
+        }
     }
 
     Ok(certs)

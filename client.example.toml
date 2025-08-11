@@ -144,6 +144,14 @@ log_level = "warn"
 # Note: DER and PEM format are supported.
 paths = ["path/to/exmaple.crt"]
 
+# PEM encoded root certificates.
+# Note: You can use this to embed the root certificates in the configuration file.
+pem = """
+-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----
+"""
+
 # Disable system root certificates.
 # Default: false
 # Note: If you set this to true, the system root certificates will not be used.
