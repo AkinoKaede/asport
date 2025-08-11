@@ -101,7 +101,7 @@ dependencies = [
  "futures-util",
  "parking_lot",
  "register-count",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "uuid",
 ]
 
@@ -129,7 +129,7 @@ dependencies = [
  "serde",
  "serde_json",
  "socket2 0.5.10",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-util",
  "uuid",
@@ -144,7 +144,7 @@ dependencies = [
  "bytes",
  "futures-util",
  "quinn",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "uuid",
 ]
 
@@ -172,7 +172,7 @@ dependencies = [
  "serde_json",
  "socket2 0.5.10",
  "sysctl",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-util",
  "uuid",
