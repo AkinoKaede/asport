@@ -22,18 +22,18 @@ The Definition of the `Command` header is as follows:
 
 ```p4
 enum bit<8> CmdType {
-    ClientHello = 0;
-    ServerHello = 1;
-    Connect = 2;
-    Packet = 3;
-    Dissociate = 4;
-    Heartbeat = 5;
+    ClientHello = 0,
+    ServerHello = 1,
+    Connect = 2,
+    Packet = 3,
+    Dissociate = 4,
+    Heartbeat = 5
 };
 
 header command_t {
     bit<8> version;
     CmdType cmd_type;
-}
+};
 
 header_union command_body {
     client_hello_h client_hello;
@@ -56,23 +56,37 @@ without the domain name and add a none type.
 
 ```p4
 enum bit<8> AddressFamily {
-    Ipv4 = 1;
-    Ipv6 = 4;
-    None = 255;
+    Ipv4 = 1,
+    Ipv6 = 4,
+    None = 255
 };
 
+header empty_h { }
+
+header ipv4_h {
+    bit<32> addr;
+}
+
+header ipv6_h {
+    bit<128> addr;
+}
+
+header port_h {
+    bit<16> port;
+}
+
 header_union address_t {
-    bit<32> ipv4;
-    bit<128> ipv6;
-    void none;
+    ipv4_h ipv4;
+    ipv6_h ipv6;
+    empty_h none;
 };
 
 header_union port_t {
-    bit<16> port;
-    void none;
+    port_h port;
+    empty_h none;
 };
 
-header address_h {
+struct address_h {
     AddressFamily family;
     address_t address;
     port_t port;
@@ -86,33 +100,32 @@ header address_h {
 - Direction: Client -> Server
 
 After the QUIC handshake, the client sends a `ClientHello` command to the server. The `ClientHello` command contains
-the UUID, the token, the forward mode, and the expected port range.
+the UUID, the token, the flags, and the expected port range.
 
 The `token` is a 256-bit hash of the user's password using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. The server will verify the token to authenticate the user.
 
-The `ForwardMode` is a combination of two options: forward network and UDP forward mode. And UDP forward mode will
-be defined in [`Packet`](#packet).
+The `Flags` is a bitmask that indicates the features that the client supports. The `Tcp` flag indicates that the client supports TCP forwarding. The `UdpEnabled` flag indicates that the client supports UDP forwarding. The `UdpModeQuic` flag indicates that the client wants to use QUIC mode for UDP forwarding.
 
 The expected port range is a header that contains the start and end port of the expected port range.
 
 ```p4
-header expected_port_range_h {
+struct expected_port_range_t {
     bit<16> start;
     bit<16> end;
-};
+}
 
 enum bit<8> Flags {
-    Tcp = 1 << 0;
-    UdpEnabled = 1 << 1;
-    UdpModeQuic = 1 << 2;
-};
+    Tcp = 1,         // 0b00000001
+    UdpEnabled = 2,  // 0b00000010
+    UdpModeQuic = 4  // 0b00000100
+}
 
 header client_hello_h {
     bit<128> uuid;
     bit<256> token;
     Flags flags;
-    expected_port_range_h expected_port_range;
-};
+    expected_port_range_t expected_port_range;
+}
 ```
 
 ### ServerHello
@@ -142,16 +155,22 @@ close the connection.
 
 ```p4
 enum bit<8> ServerHelloCode {
-    Success = 0;
-    AuthFailed = 1;
-    BindFailed = 2;
-    PortDenied = 3;
-    NetworkDenied = 4;
+    Success = 0,
+    AuthFailed = 1,
+    BindFailed = 2,
+    PortDenied = 3,
+    NetworkDenied = 4
 };
 
-header_union server_hello_body {
+header port_h {
     bit<16> port;
-    void none;
+}
+
+header empty_h { }
+
+header_union server_hello_body {
+    port_h port;
+    empty_h none;
 };
 
 header server_hello_h {
