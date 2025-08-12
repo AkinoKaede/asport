@@ -27,23 +27,21 @@ use std::{
 
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use quinn::{ClosedStream, Connection as QuinnConnection, ConnectionError, RecvStream,
-            SendDatagramError, SendStream, VarInt};
+use quinn::{
+    ClosedStream, Connection as QuinnConnection, ConnectionError, RecvStream, SendDatagramError,
+    SendStream, VarInt,
+};
 use thiserror::Error;
 use uuid::Uuid;
 
 use asport::{
-    Address, Flags, Header,
     model::{
-        AssembleError,
-        ClientHello as ClientHelloModel,
-        Connect as ConnectModel,
-        Connection as ConnectionModel,
-        KeyingMaterialExporter as KeyingMaterialExporterImpl,
-        Packet as PacketModel, ServerHello as ServerHelloModel,
         side::{Rx, Tx},
+        AssembleError, ClientHello as ClientHelloModel, Connect as ConnectModel,
+        Connection as ConnectionModel, KeyingMaterialExporter as KeyingMaterialExporterImpl,
+        Packet as PacketModel, ServerHello as ServerHelloModel,
     },
-    ServerHello as ServerHelloHeader, UnmarshalError,
+    Address, Flags, Header, ServerHello as ServerHelloHeader, UnmarshalError,
 };
 
 use self::side::Side;
@@ -153,16 +151,19 @@ impl Connection<side::Client> {
         flags: impl Into<Flags>,
         expected_port_range: RangeInclusive<u16>,
     ) -> Result<(), Error> {
-        let model = self
-            .model
-            .send_client_hello(uuid, password, &self.keying_material_exporter(), flags, expected_port_range);
+        let model = self.model.send_client_hello(
+            uuid,
+            password,
+            &self.keying_material_exporter(),
+            flags,
+            expected_port_range,
+        );
 
         let mut send = self.conn.open_uni().await?;
         model.header().async_marshal(&mut send).await?;
         send.close().await?;
         Ok(())
     }
-
 
     /// Sends a `Heartbeat` command.
     pub async fn heartbeat(&self) -> Result<(), Error> {
@@ -186,9 +187,7 @@ impl Connection<side::Client> {
             Header::ClientHello(_) => Err(Error::BadCommandUniStream("clienthello", recv)),
             Header::ServerHello(server_hello) => {
                 let model = self.model.recv_server_hello(server_hello);
-                Ok(Task::ServerHello(ServerHello::new(
-                    model
-                )))
+                Ok(Task::ServerHello(ServerHello::new(model)))
             }
             Header::Packet(pkt) => {
                 let model = self.model.recv_packet_unrestricted(pkt);
@@ -243,8 +242,12 @@ impl Connection<side::Client> {
         };
 
         match header {
-            Header::ClientHello(_) => Err(Error::BadCommandDatagram("clienthello", dg.into_inner())),
-            Header::ServerHello(_) => Err(Error::BadCommandDatagram("serverhello", dg.into_inner())),
+            Header::ClientHello(_) => {
+                Err(Error::BadCommandDatagram("clienthello", dg.into_inner()))
+            }
+            Header::ServerHello(_) => {
+                Err(Error::BadCommandDatagram("serverhello", dg.into_inner()))
+            }
             Header::Connect(_) => Err(Error::BadCommandDatagram("connect", dg.into_inner())),
             Header::Packet(pkt) => {
                 let model = self.model.recv_packet_unrestricted(pkt);
@@ -271,9 +274,7 @@ impl Connection<side::Server> {
 
     /// Sends a `ServerHello` command.
     pub async fn server_hello(&self, result: ServerHelloHeader) -> Result<(), Error> {
-        let model = self
-            .model
-            .send_server_hello(result);
+        let model = self.model.send_server_hello(result);
         let mut send = self.conn.open_uni().await?;
         model.header().async_marshal(&mut send).await?;
         send.close().await?;
@@ -296,7 +297,6 @@ impl Connection<side::Server> {
         send.close().await?;
         Ok(())
     }
-
 
     /// Try to parse a `quinn::RecvStream` as a ASPORT command.
     ///
@@ -368,8 +368,12 @@ impl Connection<side::Server> {
         };
 
         match header {
-            Header::ClientHello(_) => Err(Error::BadCommandDatagram("clienthello", dg.into_inner())),
-            Header::ServerHello(_) => Err(Error::BadCommandDatagram("serverhello", dg.into_inner())),
+            Header::ClientHello(_) => {
+                Err(Error::BadCommandDatagram("clienthello", dg.into_inner()))
+            }
+            Header::ServerHello(_) => {
+                Err(Error::BadCommandDatagram("serverhello", dg.into_inner()))
+            }
             Header::Connect(_) => Err(Error::BadCommandDatagram("connect", dg.into_inner())),
             Header::Packet(pkt) => {
                 let assoc_id = pkt.assoc_id();
@@ -475,7 +479,9 @@ impl Connect {
     pub fn addr(&self) -> &Address {
         match &self.model {
             Side::Server(model) => {
-                let Header::Connect(conn) = model.header() else { unreachable!() };
+                let Header::Connect(conn) = model.header() else {
+                    unreachable!()
+                };
                 conn.addr()
             }
             Side::Client(model) => model.addr(),
@@ -535,7 +541,6 @@ impl Debug for Connect {
             .finish()
     }
 }
-
 
 /// A received `Packet` command.
 #[derive(Debug)]
@@ -606,7 +611,6 @@ impl Packet {
     }
 }
 
-
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Task {
@@ -624,13 +628,21 @@ struct KeyingMaterialExporter(QuinnConnection);
 impl KeyingMaterialExporterImpl for KeyingMaterialExporter {
     fn export_keying_material(&self, label: &[u8], context: &[u8]) -> [u8; 32] {
         let mut buf = [0; 32];
-        self.0
-            .export_keying_material(&mut buf, label, context)
-            .unwrap();
+        match self.0.export_keying_material(&mut buf, label, context) {
+            Ok(_) => {}
+            Err(_) => {
+                // Fallback to BLAKE3 key derivation if export fails
+                // This is a workaround for Noise handshake implementations that do not support keying material export.
+                let info = "session key derivation";
+                let session_key = blake3::derive_key(&info, context);
+
+                let mac = blake3::keyed_hash(&session_key, label.as_ref());
+                buf.copy_from_slice(mac.as_bytes());
+            }
+        }
         buf
     }
 }
-
 
 /// Errors that can occur when processing a task.
 #[derive(Debug, Error)]

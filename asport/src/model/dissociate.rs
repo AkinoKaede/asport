@@ -26,14 +26,18 @@ impl Dissociate<side::Tx> {
 
     /// Returns the header of the `Dissociate` command
     pub fn header(&self) -> &Header {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         &tx.header
     }
 }
 
 impl Debug for Dissociate<side::Tx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Dissociate")
             .field("header", &tx.header)
             .finish()
@@ -54,14 +58,18 @@ impl Dissociate<side::Rx> {
 
     /// Returns the UDP session ID
     pub fn assoc_id(&self) -> u16 {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         rx.assoc_id
     }
 }
 
 impl Debug for Dissociate<side::Rx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Dissociate")
             .field("assoc_id", &rx.assoc_id)
             .finish()

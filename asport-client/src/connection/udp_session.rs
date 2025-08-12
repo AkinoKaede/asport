@@ -20,7 +20,7 @@ use tokio::{
 use asport::Address;
 
 use crate::error::Error;
-use crate::utils::{ProxyProtocol, union_proxy_protocol_addresses};
+use crate::utils::{union_proxy_protocol_addresses, ProxyProtocol};
 
 use super::Connection;
 
@@ -123,17 +123,17 @@ impl UdpSession {
         tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    Some(_) = update_rx.recv() => {},
-                    _ = time::sleep(udp_timeout) => {
-                        log::debug!("UDP session [{assoc_id:#06x}] timeout");
+                     Some(_) = update_rx.recv() => {},
+                     _ = time::sleep(udp_timeout) => {
+                         log::debug!("UDP session [{assoc_id:#06x}] timeout");
 
-                        if let Some(session)= gc_session.0.conn.udp_sessions.lock().remove(&assoc_id) {
-                            session.close();
-                        };
+                         if let Some(session)= gc_session.0.conn.udp_sessions.lock().remove(&assoc_id) {
+                             session.close();
+                         };
 
-                        return;
-                   },
-               }
+                         return;
+                    },
+                }
             }
         });
 
@@ -158,7 +158,9 @@ impl UdpSession {
                 ppp::v2::Version::Two | ppp::v2::Command::Proxy,
                 ppp::v2::Protocol::Datagram,
                 addresses,
-            ).build().unwrap();
+            )
+            .build()
+            .unwrap();
 
             let mut buf = BytesMut::with_capacity(v2.len() + pkt.len());
             buf.put(v2.as_slice());
@@ -170,7 +172,9 @@ impl UdpSession {
 
         // Because self.0.socket is bind on [::], we need to convert the IPv4 address to IPv6.
         let addr = match addr {
-            SocketAddr::V4(v4) => SocketAddr::new(IpAddr::from(v4.ip().to_ipv6_mapped()), v4.port()),
+            SocketAddr::V4(v4) => {
+                SocketAddr::new(IpAddr::from(v4.ip().to_ipv6_mapped()), v4.port())
+            }
             addr => addr,
         };
 
@@ -180,7 +184,6 @@ impl UdpSession {
 
         Ok(())
     }
-
 
     async fn recv(&self) -> Result<Bytes, IoError> {
         self.recv_from().await.map(|(pkt, _)| pkt)

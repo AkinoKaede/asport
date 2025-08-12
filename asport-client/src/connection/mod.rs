@@ -39,6 +39,9 @@ use crate::{
 };
 
 use self::{authenticated::Authenticated, udp_session::UdpSession};
+use crate::utils::SecurityType;
+use quinn_hyphae::helper::hyphae_endpoint_config;
+use quinn_hyphae::{HandshakeBuilder, RustCryptoBackend, HYPHAE_H_V1_QUIC_V1_VERSION};
 
 mod authenticated;
 mod handle_stream;
@@ -77,43 +80,84 @@ pub struct Connection {
 
 impl Connection {
     pub fn set_config(cfg: Config) -> Result<(), Error> {
-        let mut crypto = RustlsClientConfig::builder()
-            .with_root_certificates(cfg.certificates)
-            .with_no_client_auth();
-
-        if cfg.skip_certificate_verification {
-            crypto
-                .dangerous()
-                .set_certificate_verifier(SkipServerVerification::new());
-        }
-
-        crypto.alpn_protocols = cfg.alpn;
-        crypto.enable_early_data = true;
-        crypto.enable_sni = !cfg.disable_sni;
-
-        let mut config = ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?));
         let mut tp_cfg = TransportConfig::default();
-
         tp_cfg
             .max_concurrent_bidi_streams(VarInt::from(DEFAULT_CONCURRENT_STREAMS))
             .max_concurrent_uni_streams(VarInt::from(DEFAULT_CONCURRENT_STREAMS))
             .send_window(cfg.send_window)
             .stream_receive_window(VarInt::from_u32(cfg.receive_window))
-            .max_idle_timeout(None);
+            .max_idle_timeout(None)
+            .congestion_controller_factory(match cfg.congestion_control {
+                CongestionControl::Cubic => Arc::new(CubicConfig::default()),
+                CongestionControl::NewReno => Arc::new(NewRenoConfig::default()),
+                CongestionControl::Bbr => Arc::new(BbrConfig::default()),
+            });
 
-        match cfg.congestion_control {
-            CongestionControl::Cubic => {
-                tp_cfg.congestion_controller_factory(Arc::new(CubicConfig::default()))
+        let noise_crypto = match cfg.security.type_ {
+            SecurityType::Noise => {
+                if let Some(noise_cfg) = cfg.security.noise {
+                    let mut builder = HandshakeBuilder::new(noise_cfg.pattern.as_str());
+                    builder = if let Some(local_private_key) = noise_cfg.local_private_key.as_ref()
+                    {
+                        builder.with_static_key(&*local_private_key)
+                    } else {
+                        builder
+                    };
+
+                    builder = if let Some(remote_public_key) = noise_cfg.remote_public_key.as_ref()
+                    {
+                        builder.with_remote_public(&*remote_public_key)
+                    } else {
+                        builder
+                    };
+
+                    Some(builder.build(RustCryptoBackend)?)
+                } else {
+                    return Err(Error::MissingSecurityConfig(SecurityType::Noise));
+                }
             }
-            CongestionControl::NewReno => {
-                tp_cfg.congestion_controller_factory(Arc::new(NewRenoConfig::default()))
+            _ => None,
+        };
+
+        let mut server_name = None;
+        let mut config = match cfg.security.type_ {
+            SecurityType::Tls => {
+                if let Some(tls_cfg) = cfg.security.tls {
+                    server_name = tls_cfg.server_name.clone();
+
+                    let mut crypto = RustlsClientConfig::builder()
+                        .with_root_certificates(tls_cfg.certificates)
+                        .with_no_client_auth();
+
+                    if tls_cfg.skip_certificate_verification {
+                        crypto
+                            .dangerous()
+                            .set_certificate_verifier(SkipServerVerification::new());
+                    }
+
+                    crypto.alpn_protocols = tls_cfg.alpn;
+                    crypto.enable_early_data = true;
+                    crypto.enable_sni = !tls_cfg.disable_sni;
+
+                    ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?))
+                } else {
+                    return Err(Error::MissingSecurityConfig(SecurityType::Tls));
+                }
             }
-            CongestionControl::Bbr => {
-                tp_cfg.congestion_controller_factory(Arc::new(BbrConfig::default()))
-            }
+            SecurityType::Noise => match noise_crypto {
+                Some(ref crypto) => ClientConfig::new(crypto.clone()),
+                None => return Err(Error::MissingSecurityConfig(SecurityType::Noise)),
+            },
         };
 
         config.transport_config(Arc::new(tp_cfg));
+
+        match cfg.security.type_ {
+            SecurityType::Noise => {
+                config.version(HYPHAE_H_V1_QUIC_V1_VERSION);
+            }
+            _ => (),
+        }
 
         // Try to create an IPv4 socket as the placeholder first, if it fails, try IPv6.
         let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
@@ -122,18 +166,26 @@ impl Connection {
             })
             .map_err(|err| Error::Socket("failed to create endpoint UDP socket", err))?;
 
-        let mut ep = QuinnEndpoint::new(
-            EndpointConfig::default(),
-            None,
-            socket,
-            Arc::new(TokioRuntime),
-        )?;
+        let ep_config = match cfg.security.type_ {
+            SecurityType::Noise => hyphae_endpoint_config(noise_crypto.unwrap().crypto_backend()),
+            _ => EndpointConfig::default(),
+        };
+
+        let mut ep = QuinnEndpoint::new(ep_config, None, socket, Arc::new(TokioRuntime))?;
 
         ep.set_default_client_config(config);
 
+        let zero_rtt_handshake = match cfg.security.type_ {
+            SecurityType::Noise => {
+                log::warn!("0-RTT handshake is not supported with Noise currently.");
+                false // Noise does not support 0-RTT currently.
+            }
+            _ => cfg.security.zero_rtt_handshake,
+        };
+
         let ep = Endpoint {
             ep,
-            server: ServerAddress::new(cfg.server, cfg.server_name),
+            server: ServerAddress::new(cfg.server, server_name),
             local: cfg.local,
             uuid: cfg.uuid,
             password: cfg.password,
@@ -141,7 +193,7 @@ impl Connection {
             udp_forward_mode: cfg.udp_forward_mode,
             udp_timeout: cfg.udp_timeout,
             expected_port_range: cfg.expected_port_range,
-            zero_rtt_handshake: cfg.zero_rtt_handshake,
+            zero_rtt_handshake,
             heartbeat: cfg.heartbeat,
             handshake_timeout: cfg.handshake_timeout,
             task_negotiation_timeout: cfg.task_negotiation_timeout,

@@ -15,14 +15,17 @@ use crate::{
     utils::{ephemeral_port_range, Network},
 };
 
-use super::{Connection, udp_sessions::UdpSessions};
+use super::{udp_sessions::UdpSessions, Connection};
 
-const EPHEMERAL_PORTS: LazyCell<BTreeSet<u16>> = LazyCell::new(|| {
-    ephemeral_port_range().collect()
-});
+const EPHEMERAL_PORTS: LazyCell<BTreeSet<u16>> = LazyCell::new(|| ephemeral_port_range().collect());
 
 impl Connection {
-    async fn bind_tcp(&self, bind_ip: IpAddr, port: u16, only_v6: Option<bool>) -> IoResult<TcpListener> {
+    async fn bind_tcp(
+        &self,
+        bind_ip: IpAddr,
+        port: u16,
+        only_v6: Option<bool>,
+    ) -> IoResult<TcpListener> {
         let domain = match bind_ip {
             IpAddr::V4(_) => Domain::IPV4,
             IpAddr::V6(_) => Domain::IPV6,
@@ -36,9 +39,7 @@ impl Connection {
 
         socket.set_nonblocking(true)?;
 
-        socket.bind(&SockAddr::from(
-            SocketAddr::new(bind_ip, port)
-        ))?;
+        socket.bind(&SockAddr::from(SocketAddr::new(bind_ip, port)))?;
 
         // backlog is the queue length for pending connections
         socket.listen(128)?;
@@ -46,7 +47,12 @@ impl Connection {
         TcpListener::from_std(socket.into())
     }
 
-    async fn bind_udp(&self, bind_ip: IpAddr, port: u16, only_v6: Option<bool>) -> IoResult<UdpSocket> {
+    async fn bind_udp(
+        &self,
+        bind_ip: IpAddr,
+        port: u16,
+        only_v6: Option<bool>,
+    ) -> IoResult<UdpSocket> {
         let domain = match bind_ip {
             IpAddr::V4(_) => Domain::IPV4,
             IpAddr::V6(_) => Domain::IPV6,
@@ -60,18 +66,18 @@ impl Connection {
 
         socket.set_nonblocking(true)?;
 
-        socket.bind(&SockAddr::from(
-            SocketAddr::new(bind_ip, port)
-        ))?;
+        socket.bind(&SockAddr::from(SocketAddr::new(bind_ip, port)))?;
 
         UdpSocket::from_std(socket.into())
     }
 
-    pub(crate) async fn bind(&self,
-                             bind_ip: IpAddr,
-                             bind_ports: BTreeSet<u16>,
-                             only_v6: Option<bool>,
-                             network: &Network) -> Result<u16, Error> {
+    pub(crate) async fn bind(
+        &self,
+        bind_ip: IpAddr,
+        bind_ports: BTreeSet<u16>,
+        only_v6: Option<bool>,
+        network: &Network,
+    ) -> Result<u16, Error> {
         let ports = {
             if network.both_enabled() {
                 bind_ports.into_iter().collect()
@@ -96,7 +102,8 @@ impl Connection {
                 }
 
                 None
-            }.await;
+            }
+            .await;
 
             let udp_socket = async {
                 if network.udp_enabled() {
@@ -104,7 +111,8 @@ impl Connection {
                 }
 
                 None
-            }.await;
+            }
+            .await;
 
             match (tcp_listener, udp_socket) {
                 (Some(Ok(tcp_listener)), Some(Ok(udp_socket))) => {
@@ -140,7 +148,6 @@ impl Connection {
                 _ => {}
             }
         }
-
 
         Err(Error::BindFailed)
     }

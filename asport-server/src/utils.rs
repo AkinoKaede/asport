@@ -3,7 +3,7 @@ use rustls_pemfile::Item;
 use std::{
     collections::BTreeSet,
     fmt::{Display, Formatter, Result as FmtResult},
-    fs::{File},
+    fs::File,
     io::{BufReader, Read},
     iter,
     net::IpAddr,
@@ -31,7 +31,8 @@ pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>
     let mut certs = Vec::new();
 
     let mut certs_bytes = Vec::new();
-    file.read_to_end(&mut certs_bytes).map_err(|e| Error::Io(e))?;
+    file.read_to_end(&mut certs_bytes)
+        .map_err(|e| Error::Io(e))?;
 
     // Try to read PEM format first
     match parse_pem_certs(certs_bytes.clone()) {
@@ -45,7 +46,6 @@ pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>
             }
         }
     }
-
 
     Ok(certs)
 }
@@ -76,14 +76,18 @@ pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, 
         Err(_) => {
             // If PEM parsing fails, try to read DER format
             if priv_key.is_none() {
-                priv_key = Some(PrivateKeyDer::try_from(key_bytes).map_err(|e| Error::InvalidPrivateKey(e))?);
+                priv_key = Some(
+                    PrivateKeyDer::try_from(key_bytes).map_err(|e| Error::InvalidPrivateKey(e))?,
+                );
             }
         }
     }
 
     match priv_key {
         Some(key) => Ok(key),
-        None => Err(Error::InvalidPrivateKey("No valid private key found".into())),
+        None => Err(Error::InvalidPrivateKey(
+            "No valid private key found".into(),
+        )),
     }
 }
 
@@ -102,7 +106,9 @@ pub fn parse_pem_priv_key(pem_text: Vec<u8>) -> Result<PrivateKeyDer<'static>, E
 
     match priv_key {
         Some(key) => Ok(key),
-        None => Err(Error::InvalidPrivateKey("No valid private key found".into())),
+        None => Err(Error::InvalidPrivateKey(
+            "No valid private key found".into(),
+        )),
     }
 }
 
@@ -159,6 +165,32 @@ pub fn ephemeral_port_range() -> RangeInclusive<u16> {
     // See also: https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/default-dynamic-port-range-tcpip-chang
     // https://doc.rust-lang.org/stable/rustc/platform-support.html
     49152..=65535
+}
+
+#[derive(Debug)]
+pub enum SecurityType {
+    Tls,
+    Noise,
+}
+impl FromStr for SecurityType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "tls" => Ok(Self::Tls),
+            "noise" => Ok(Self::Noise),
+            _ => Err("invalid security type"),
+        }
+    }
+}
+
+impl Display for SecurityType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Tls => write!(f, "tls"),
+            Self::Noise => write!(f, "noise"),
+        }
+    }
 }
 
 pub enum CongestionControl {

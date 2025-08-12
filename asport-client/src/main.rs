@@ -16,11 +16,7 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::{
-    cell::LazyCell,
-    path::PathBuf,
-    process,
-};
+use std::{cell::LazyCell, path::PathBuf, process};
 
 use clap::Parser;
 use env_logger::Builder as LoggerBuilder;
@@ -28,9 +24,9 @@ use env_logger::Builder as LoggerBuilder;
 use crate::connection::Connection;
 
 mod config;
-mod utils;
-mod error;
 mod connection;
+mod error;
+mod utils;
 
 #[derive(Parser)]
 #[command(about, author, version)]
@@ -66,7 +62,6 @@ async fn main() {
         .format_target(false)
         .init();
 
-
     match Connection::set_config(cfg) {
         Ok(()) => {}
         Err(err) => {
@@ -80,8 +75,10 @@ async fn main() {
 
 const CONFIG_EXTENSIONS: [&str; 6] = ["json", "jsonc", "ron", "toml", "yaml", "yml"];
 const CONFIG_NAMES: LazyCell<Vec<PathBuf>> = LazyCell::new(|| {
-    CONFIG_EXTENSIONS.iter()
-        .map(|ext| PathBuf::from(format!("client.{}", ext))).collect::<Vec<_>>()
+    CONFIG_EXTENSIONS
+        .iter()
+        .map(|ext| PathBuf::from(format!("client.{}", ext)))
+        .collect::<Vec<_>>()
 });
 
 #[cfg(unix)]

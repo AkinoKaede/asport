@@ -3,7 +3,10 @@ use std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     mem,
     ops::RangeInclusive,
-    sync::{Arc, atomic::{AtomicU16, Ordering}},
+    sync::{
+        atomic::{AtomicU16, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -14,8 +17,8 @@ use uuid::Uuid;
 
 use crate::{
     Address, ClientHello as ClientHelloHeader, Connect as ConnectHeader,
-    Dissociate as DissociateHeader, Flags, Heartbeat as HeartbeatHeader,
-    Packet as PacketHeader, ServerHello as ServerHelloHeader,
+    Dissociate as DissociateHeader, Flags, Heartbeat as HeartbeatHeader, Packet as PacketHeader,
+    ServerHello as ServerHelloHeader,
 };
 
 pub use self::{
@@ -28,11 +31,11 @@ pub use self::{
 };
 
 mod client_hello;
-mod heartbeat;
-mod server_hello;
 mod connect;
-mod packet;
 mod dissociate;
+mod heartbeat;
+mod packet;
+mod server_hello;
 
 #[derive(Clone)]
 pub struct Connection<B> {
@@ -91,7 +94,7 @@ where
 
     /// Receives a `Connect`
     pub fn recv_connect(&self, header: ConnectHeader) -> Connect<side::Rx> {
-        let (addr, ) = header.into();
+        let (addr,) = header.into();
         Connect::<side::Rx>::new(self.task_connect_count.reg(), addr)
     }
 
@@ -142,7 +145,7 @@ where
 
     /// Receives a `Dissociate`
     pub fn recv_dissociate(&self, header: DissociateHeader) -> Dissociate<side::Rx> {
-        let (assoc_id, ) = header.into();
+        let (assoc_id,) = header.into();
         self.udp_sessions.lock().recv_dissociate(assoc_id)
     }
 
@@ -304,7 +307,6 @@ where
             .finish()
     }
 }
-
 
 struct UdpSession<B> {
     pkt_buf: HashMap<u16, PacketBuffer<B>>,
@@ -505,14 +507,14 @@ where
     Self: Sized,
     B: AsRef<[u8]>,
 {
-    fn assemble(&mut self, data: impl IntoIterator<Item=B>);
+    fn assemble(&mut self, data: impl IntoIterator<Item = B>);
 }
 
 impl<B> Assembler<B> for Vec<u8>
 where
     B: AsRef<[u8]>,
 {
-    fn assemble(&mut self, data: impl IntoIterator<Item=B>) {
+    fn assemble(&mut self, data: impl IntoIterator<Item = B>) {
         for d in data {
             self.extend_from_slice(d.as_ref());
         }
@@ -529,4 +531,3 @@ pub enum AssembleError {
     #[error("duplicated fragment: {0}")]
     DuplicatedFragment(u8),
 }
-

@@ -6,7 +6,9 @@ use std::{
 use bytes::{BufMut, BytesMut};
 use futures_util::{AsyncWrite, AsyncWriteExt};
 
-use crate::{Address, ClientHello, Connect, Dissociate, Header, Heartbeat, Packet, ServerHello, VERSION};
+use crate::{
+    Address, ClientHello, Connect, Dissociate, Header, Heartbeat, Packet, ServerHello, VERSION,
+};
 
 impl Header {
     /// Marshals the header into an `AsyncWrite` stream

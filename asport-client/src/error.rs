@@ -1,13 +1,14 @@
 use std::io::Error as IoError;
 
 use quinn::{crypto::rustls::NoInitialCipherSuite, ConnectError, ConnectionError};
+use quinn_hyphae::crypto::CryptoError;
 use rustls::Error as RustlsError;
 use rustls_native_certs::Error as RustlsNativeCertsError;
 use thiserror::Error;
 
 use asport_quinn::Error as ModelError;
 
-use crate::utils::Network;
+use crate::utils::{Network, SecurityType};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -45,6 +46,10 @@ pub enum Error {
     WrongPacketSource,
     #[error("missing address")]
     MissingAddress,
+    #[error("missing security configuration for {0}")]
+    MissingSecurityConfig(SecurityType),
+    #[error(transparent)]
+    QuinnHyphaeCryptoError(#[from] CryptoError),
 }
 
 impl From<ConnectionError> for Error {

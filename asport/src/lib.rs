@@ -17,7 +17,8 @@
 */
 
 pub use self::protocol::{
-    Address, ClientHello, Connect, Dissociate, Flags, Header, Heartbeat, Packet, ServerHello, VERSION,
+    Address, ClientHello, Connect, Dissociate, Flags, Header, Heartbeat, Packet, ServerHello,
+    VERSION,
 };
 #[cfg(any(feature = "async_marshal", feature = "marshal"))]
 pub use self::unmarshal::UnmarshalError;
@@ -32,4 +33,3 @@ mod marshal;
 
 #[cfg(any(feature = "async_marshal", feature = "marshal"))]
 mod unmarshal;
-

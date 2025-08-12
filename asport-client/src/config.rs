@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use humantime::Duration as HumanDuration;
 use log::LevelFilter;
 use rustls::RootCertStore;
@@ -14,7 +15,7 @@ use serde::{de::Error as DeError, Deserialize, Deserializer};
 use uuid::Uuid;
 
 use crate::utils::{
-    load_certs, Address, CongestionControl, Network, ProxyProtocol, UdpForwardMode,
+    load_certs, Address, CongestionControl, Network, ProxyProtocol, SecurityType, UdpForwardMode,
 };
 
 // TODO: need a better way to do this
@@ -57,35 +58,13 @@ pub struct Config {
     )]
     pub expected_port_range: RangeInclusive<u16>,
 
-    #[serde(alias = "sni")]
-    pub server_name: Option<String>,
-
-    #[serde(
-        default = "default::certificates::default",
-        deserialize_with = "deserialize_certificates"
-    )]
-    pub certificates: RootCertStore,
-
-    #[serde(default = "default::disable_sni")]
-    pub disable_sni: bool,
-
-    #[serde(
-        alias = "skip_cert_verify",
-        default = "default::skip_certificate_verification"
-    )]
-    pub skip_certificate_verification: bool,
+    pub security: SecurityConfig,
 
     #[serde(
         default = "default::congestion_control",
         deserialize_with = "deserialize_from_str"
     )]
     pub congestion_control: CongestionControl,
-
-    #[serde(default = "default::alpn", deserialize_with = "deserialize_alpn")]
-    pub alpn: Vec<Vec<u8>>,
-
-    #[serde(default = "default::zero_rtt_handshake")]
-    pub zero_rtt_handshake: bool,
 
     #[serde(
         default = "default::healthy_check",
@@ -148,6 +127,63 @@ pub struct Config {
     pub log_level: LevelFilter,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityConfig {
+    #[serde(
+        default = "default::security::default",
+        deserialize_with = "deserialize_from_str",
+        alias = "type"
+    )]
+    pub type_: SecurityType,
+
+    #[serde(default = "default::security::zero_rtt_handshake")]
+    pub zero_rtt_handshake: bool,
+
+    pub tls: Option<SecurityTlsConfig>,
+
+    pub noise: Option<SecurityNoiseConfig>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityTlsConfig {
+    #[serde(
+        default = "default::security::tls::certificates::default",
+        deserialize_with = "deserialize_certificates"
+    )]
+    pub certificates: RootCertStore,
+
+    #[serde(alias = "sni")]
+    pub server_name: Option<String>,
+
+    #[serde(default = "default::security::tls::disable_sni")]
+    pub disable_sni: bool,
+
+    #[serde(
+        alias = "skip_cert_verify",
+        default = "default::security::tls::skip_certificate_verification"
+    )]
+    pub skip_certificate_verification: bool,
+
+    #[serde(
+        default = "default::security::tls::alpn",
+        deserialize_with = "deserialize_alpn"
+    )]
+    pub alpn: Vec<Vec<u8>>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityNoiseConfig {
+    #[serde(default = "default::security::noise::pattern")]
+    pub pattern: String,
+    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
+    pub local_private_key: Option<Arc<[u8]>>,
+    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
+    pub remote_public_key: Option<Arc<[u8]>>,
+}
+
 impl Config {
     pub fn build(path: PathBuf) -> Result<Self, config::ConfigError> {
         let base_path = path.parent();
@@ -181,29 +217,60 @@ mod default {
 
     use crate::utils::{CongestionControl, Network, ProxyProtocol, UdpForwardMode};
 
-    pub mod certificates {
-        use std::path::PathBuf;
+    pub mod security {
+        use crate::utils::SecurityType;
 
-        use rustls::RootCertStore;
-
-        use crate::utils::load_certs;
-
-        pub fn paths() -> Vec<PathBuf> {
-            Vec::new()
+        pub fn default() -> SecurityType {
+            SecurityType::Tls
         }
 
-        pub fn disable_native() -> bool {
+        pub fn zero_rtt_handshake() -> bool {
             false
         }
 
-        pub fn default() -> RootCertStore {
-            let paths: Vec<PathBuf> = Vec::new();
-            match load_certs(paths, None, false) {
-                Ok(certs) => certs,
-                Err(err) => {
-                    log::error!("failed to load certificates: {}", err);
-                    std::process::exit(1);
+        pub mod tls {
+            pub mod certificates {
+                use std::path::PathBuf;
+
+                use rustls::RootCertStore;
+
+                use crate::utils::load_certs;
+
+                pub fn paths() -> Vec<PathBuf> {
+                    Vec::new()
                 }
+
+                pub fn disable_native() -> bool {
+                    false
+                }
+
+                pub fn default() -> RootCertStore {
+                    let paths: Vec<PathBuf> = Vec::new();
+                    match load_certs(paths, None, false) {
+                        Ok(certs) => certs,
+                        Err(err) => {
+                            log::error!("failed to load certificates: {}", err);
+                            std::process::exit(1);
+                        }
+                    }
+                }
+            }
+
+            pub fn skip_certificate_verification() -> bool {
+                false
+            }
+            pub fn disable_sni() -> bool {
+                false
+            }
+
+            pub fn alpn() -> Vec<Vec<u8>> {
+                vec![b"asport".to_vec()]
+            }
+        }
+
+        pub mod noise {
+            pub fn pattern() -> String {
+                "Noise_NK_25519_ChaChaPoly_BLAKE2s".to_string()
             }
         }
     }
@@ -224,23 +291,8 @@ mod default {
         1..=65535
     }
 
-    pub fn skip_certificate_verification() -> bool {
-        false
-    }
-    pub fn disable_sni() -> bool {
-        false
-    }
-
     pub fn congestion_control() -> CongestionControl {
         CongestionControl::Cubic
-    }
-
-    pub fn alpn() -> Vec<Vec<u8>> {
-        vec![b"asport".to_vec()]
-    }
-
-    pub fn zero_rtt_handshake() -> bool {
-        false
     }
 
     pub fn healthy_check() -> Duration {
@@ -302,6 +354,29 @@ where
     T::from_str(&s).map_err(DeError::custom)
 }
 
+#[allow(dead_code)]
+pub fn deserialize_from_base64<'de, D>(deserializer: D) -> Result<Arc<[u8]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
+    Ok(Arc::from(bytes.into_boxed_slice()))
+}
+
+pub fn deserialize_from_base64_opt<'de, D>(deserializer: D) -> Result<Option<Arc<[u8]>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s.is_empty() {
+        Ok(None)
+    } else {
+        let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
+        Ok(Some(Arc::from(bytes.into_boxed_slice())))
+    }
+}
+
 pub fn deserialize_password<'de, D>(deserializer: D) -> Result<Arc<[u8]>, D::Error>
 where
     D: Deserializer<'de>,
@@ -359,10 +434,10 @@ where
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Certificates {
-        #[serde(default = "default::certificates::paths")]
+        #[serde(default = "default::security::tls::certificates::paths")]
         paths: Vec<PathBuf>,
         pem: Option<String>,
-        #[serde(default = "default::certificates::disable_native")]
+        #[serde(default = "default::security::tls::certificates::disable_native")]
         disable_native: bool,
     }
 

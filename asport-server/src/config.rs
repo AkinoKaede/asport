@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD, Engine};
 use humantime::Duration as HumanDuration;
 use log::LevelFilter;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
@@ -9,12 +10,15 @@ use std::{
     ops::{BitOr, RangeInclusive},
     path::PathBuf,
     str::FromStr,
-    sync::OnceLock,
+    sync::{Arc, OnceLock},
     time::Duration,
 };
 use uuid::Uuid;
 
-use crate::utils::{load_certs, load_priv_key, parse_pem_certs, parse_pem_priv_key, CongestionControl, Network};
+use crate::utils::{
+    load_certs, load_priv_key, parse_pem_certs, parse_pem_priv_key, CongestionControl, Network,
+    SecurityType,
+};
 
 // TODO: need a better way to do this
 static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -24,25 +28,15 @@ static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
 pub struct Config {
     pub server: SocketAddr,
 
-    #[serde(deserialize_with = "deserialize_certs")]
-    pub certificate: Vec<CertificateDer<'static>>,
+    pub proxies: Vec<ProxyConfig>,
 
-    #[serde(deserialize_with = "deserialize_priv_key")]
-    pub private_key: PrivateKeyDer<'static>,
-
-    pub proxies: Vec<Proxy>,
+    pub security: SecurityConfig,
 
     #[serde(
         default = "default::congestion_control",
         deserialize_with = "deserialize_from_str"
     )]
     pub congestion_control: CongestionControl,
-
-    #[serde(default = "default::alpn", deserialize_with = "deserialize_alpn")]
-    pub alpn: Vec<Vec<u8>>,
-
-    #[serde(default = "default::zero_rtt_handshake")]
-    pub zero_rtt_handshake: bool,
 
     pub only_v6: Option<bool>,
 
@@ -82,7 +76,7 @@ pub struct Config {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Proxy {
+pub struct ProxyConfig {
     #[serde(deserialize_with = "deserialize_users")]
     pub users: HashMap<Uuid, Box<[u8]>>,
 
@@ -102,6 +96,51 @@ pub struct Proxy {
         deserialize_with = "deserialize_network"
     )]
     pub allow_network: Network,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityConfig {
+    #[serde(
+        default = "default::security::default",
+        deserialize_with = "deserialize_from_str",
+        alias = "type"
+    )]
+    pub type_: SecurityType,
+
+    #[serde(default = "default::security::zero_rtt_handshake")]
+    pub zero_rtt_handshake: bool,
+
+    pub tls: Option<SecurityTlsConfig>,
+
+    pub noise: Option<SecurityNoiseConfig>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityTlsConfig {
+    #[serde(deserialize_with = "deserialize_certs")]
+    pub certificate: Vec<CertificateDer<'static>>,
+
+    #[serde(deserialize_with = "deserialize_priv_key")]
+    pub private_key: PrivateKeyDer<'static>,
+
+    #[serde(
+        default = "default::security::tls::alpn",
+        deserialize_with = "deserialize_alpn"
+    )]
+    pub alpn: Vec<Vec<u8>>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecurityNoiseConfig {
+    #[serde(default = "default::security::noise::pattern")]
+    pub pattern: String,
+    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
+    pub local_private_key: Option<Arc<[u8]>>,
+    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
+    pub remote_public_key: Option<Arc<[u8]>>,
 }
 
 impl Config {
@@ -137,14 +176,6 @@ mod default {
         CongestionControl::Cubic
     }
 
-    pub fn alpn() -> Vec<Vec<u8>> {
-        vec![b"asport".to_vec()]
-    }
-
-    pub fn zero_rtt_handshake() -> bool {
-        false
-    }
-
     pub fn handshake_timeout() -> Duration {
         Duration::from_secs(3)
     }
@@ -177,7 +208,7 @@ mod default {
         LevelFilter::Warn
     }
 
-    pub(crate) mod proxy {
+    pub mod proxy {
         use std::collections::BTreeSet;
         use std::net::{IpAddr, Ipv6Addr};
 
@@ -195,6 +226,30 @@ mod default {
             Network::TCP | Network::UDP
         }
     }
+
+    pub mod security {
+        use crate::utils::SecurityType;
+
+        pub fn default() -> SecurityType {
+            SecurityType::Tls
+        }
+
+        pub fn zero_rtt_handshake() -> bool {
+            false
+        }
+
+        pub mod tls {
+            pub fn alpn() -> Vec<Vec<u8>> {
+                vec![b"asport".to_vec()]
+            }
+        }
+
+        pub mod noise {
+            pub fn pattern() -> String {
+                "Noise_NK_25519_ChaChaPoly_BLAKE2s".to_string()
+            }
+        }
+    }
 }
 
 pub fn deserialize_alpn<'de, D>(deserializer: D) -> Result<Vec<Vec<u8>>, D::Error>
@@ -203,6 +258,29 @@ where
 {
     let s = Vec::<String>::deserialize(deserializer)?;
     Ok(s.into_iter().map(|alpn| alpn.into_bytes()).collect())
+}
+
+#[allow(dead_code)]
+pub fn deserialize_from_base64<'de, D>(deserializer: D) -> Result<Arc<[u8]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
+    Ok(Arc::from(bytes.into_boxed_slice()))
+}
+
+pub fn deserialize_from_base64_opt<'de, D>(deserializer: D) -> Result<Option<Arc<[u8]>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s.is_empty() {
+        Ok(None)
+    } else {
+        let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
+        Ok(Some(Arc::from(bytes.into_boxed_slice())))
+    }
 }
 
 pub fn deserialize_users<'de, D>(deserializer: D) -> Result<HashMap<Uuid, Box<[u8]>>, D::Error>

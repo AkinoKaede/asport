@@ -2,8 +2,8 @@ use std::{
     io::Error as IoError,
     net::{IpAddr, SocketAddr},
     sync::{
-        Arc,
         atomic::{AtomicU16, Ordering},
+        Arc,
     },
 };
 
@@ -50,7 +50,6 @@ impl UdpSessions {
         }));
 
         let session_listening = sessions.clone();
-
 
         let listen = async move {
             // Prevent send `Packet` before `ServerHello`
@@ -109,11 +108,12 @@ impl UdpSessions {
         sessions
     }
 
-
     pub async fn send_to(&self, pkt: Bytes, addr: SocketAddr) -> Result<(), Error> {
         // map ipv4 to ipv6-mapped-ipv4
         let addr = match (addr, self.0.local_addr) {
-            (SocketAddr::V4(v4), SocketAddr::V6(_)) => SocketAddr::new(IpAddr::from(v4.ip().to_ipv6_mapped()), v4.port()),
+            (SocketAddr::V4(v4), SocketAddr::V6(_)) => {
+                SocketAddr::new(IpAddr::from(v4.ip().to_ipv6_mapped()), v4.port())
+            }
             (addr, _) => addr,
         };
 

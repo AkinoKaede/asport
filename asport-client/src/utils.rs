@@ -109,6 +109,32 @@ pub fn union_proxy_protocol_addresses(
     }
 }
 
+#[derive(Debug)]
+pub enum SecurityType {
+    Tls,
+    Noise,
+}
+impl FromStr for SecurityType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "tls" => Ok(Self::Tls),
+            "noise" => Ok(Self::Noise),
+            _ => Err("invalid security type"),
+        }
+    }
+}
+
+impl Display for SecurityType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Tls => write!(f, "tls"),
+            Self::Noise => write!(f, "noise"),
+        }
+    }
+}
+
 pub enum CongestionControl {
     Cubic,
     NewReno,

@@ -171,8 +171,7 @@ impl Connection {
         }
 
         let (network, udp_forward_mode) =
-            <Flags as TryInto<RemoteConfiguredFlgas>>::try_into(hello.flags())?
-                .into();
+            <Flags as TryInto<RemoteConfiguredFlgas>>::try_into(hello.flags())?.into();
         self.udp_forward_mode.store(Some(udp_forward_mode));
 
         let res = self.process_handshake(hello, network).await;

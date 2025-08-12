@@ -28,26 +28,28 @@ impl Connect<side::Tx> {
 
     /// Returns the header of the `Connect` command
     pub fn header(&self) -> &Header {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         &tx.header
     }
 }
 
 impl Debug for Connect<side::Tx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Tx(tx) = &self.inner else { unreachable!() };
+        let Side::Tx(tx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Connect")
             .field("header", &tx.header)
             .finish()
     }
 }
 
-
 struct Rx {
     addr: Address,
     _task_reg: Register,
 }
-
 
 impl Connect<side::Rx> {
     pub(super) fn new(task_reg: Register, addr: Address) -> Self {
@@ -62,14 +64,18 @@ impl Connect<side::Rx> {
 
     /// Returns the address
     pub fn addr(&self) -> &Address {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         &rx.addr
     }
 }
 
 impl Debug for Connect<side::Rx> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let Side::Rx(rx) = &self.inner else { unreachable!() };
+        let Side::Rx(rx) = &self.inner else {
+            unreachable!()
+        };
         f.debug_struct("Connect").field("addr", &rx.addr).finish()
     }
 }

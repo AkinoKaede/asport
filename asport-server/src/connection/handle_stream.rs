@@ -35,9 +35,8 @@ impl Connection {
                 self.task_negotiation_timeout,
                 self.model.accept_uni_stream(recv),
             )
-                .await
-                .map_err(|_| Error::TaskNegotiationTimeout)??;
-
+            .await
+            .map_err(|_| Error::TaskNegotiationTimeout)??;
 
             if let Task::ClientHello(client_hello) = &task {
                 self.handshake(client_hello).await?;
@@ -90,8 +89,8 @@ impl Connection {
                 self.task_negotiation_timeout,
                 self.model.accept_bi_stream(send, recv),
             )
-                .await
-                .map_err(|_| Error::TaskNegotiationTimeout)??;
+            .await
+            .map_err(|_| Error::TaskNegotiationTimeout)??;
 
             tokio::select! {
                 () = self.auth.clone() => {}
@@ -114,7 +113,6 @@ impl Connection {
             }
         }
     }
-
 
     pub async fn handle_datagram(self, dg: Bytes) {
         log::debug!(

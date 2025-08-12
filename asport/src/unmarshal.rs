@@ -8,8 +8,9 @@ use futures_util::{AsyncRead, AsyncReadExt};
 use thiserror::Error;
 use uuid::{Error as UuidError, Uuid};
 
-use crate::{Address, ClientHello, Connect, Dissociate, Flags, Header, Heartbeat, Packet,
-            protocol::InvalidFlags, ServerHello, VERSION,
+use crate::{
+    protocol::InvalidFlags, Address, ClientHello, Connect, Dissociate, Flags, Header, Heartbeat,
+    Packet, ServerHello, VERSION,
 };
 
 impl Header {
@@ -29,8 +30,12 @@ impl Header {
         let cmd = buf[0];
 
         match cmd {
-            Header::TYPE_CODE_CLIENT_HELLO => ClientHello::async_read(s).await.map(Self::ClientHello),
-            Header::TYPE_CODE_SERVER_HELLO => ServerHello::async_read(s).await.map(Self::ServerHello),
+            Header::TYPE_CODE_CLIENT_HELLO => {
+                ClientHello::async_read(s).await.map(Self::ClientHello)
+            }
+            Header::TYPE_CODE_SERVER_HELLO => {
+                ServerHello::async_read(s).await.map(Self::ServerHello)
+            }
             Header::TYPE_CODE_CONNECT => Connect::async_read(s).await.map(Self::Connect),
             Header::TYPE_CODE_PACKET => Packet::async_read(s).await.map(Self::Packet),
             Header::TYPE_CODE_DISSOCIATE => Dissociate::async_read(s).await.map(Self::Dissociate),
@@ -147,8 +152,7 @@ impl ClientHello {
         s.read_exact(&mut buf).await?;
         let uuid = Uuid::from_slice(&buf[..16])?;
         let token = TryFrom::try_from(&buf[16..48]).unwrap();
-        let forward_mode = Flags::try_from(buf[48])
-            .map_err(UnmarshalError::InvalidForwardMode)?;
+        let forward_mode = Flags::try_from(buf[48]).map_err(UnmarshalError::InvalidForwardMode)?;
         let start = u16::from_be_bytes([buf[49], buf[50]]);
         let end = u16::from_be_bytes([buf[51], buf[52]]);
         let expected_port_range = start..=end;
@@ -162,8 +166,7 @@ impl ClientHello {
         s.read_exact(&mut buf)?;
         let uuid = Uuid::from_slice(&buf[..16])?;
         let token = TryFrom::try_from(&buf[16..48]).unwrap();
-        let forward_mode = Flags::try_from(buf[48])
-            .map_err(UnmarshalError::InvalidForwardMode)?;
+        let forward_mode = Flags::try_from(buf[48]).map_err(UnmarshalError::InvalidForwardMode)?;
         let start = u16::from_be_bytes([buf[49], buf[50]]);
         let end = u16::from_be_bytes([buf[51], buf[52]]);
         let expected_port_range = start..=end;
@@ -279,7 +282,6 @@ impl Dissociate {
         Ok(Self::new(assoc_id))
     }
 }
-
 
 impl Heartbeat {
     #[cfg(feature = "async_marshal")]

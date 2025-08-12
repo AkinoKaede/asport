@@ -15,11 +15,11 @@ pub use self::{
 };
 
 mod client_hello;
-mod heartbeat;
-mod server_hello;
 mod connect;
-mod packet;
 mod dissociate;
+mod heartbeat;
+mod packet;
+mod server_hello;
 
 pub const VERSION: u8 = 0x00;
 
@@ -67,7 +67,6 @@ impl Header {
         }
     }
 }
-
 
 /// Socks5-like variable-length field that encodes the network address
 /// Domain is not supported because it not possible that the remote address is a domain.
@@ -136,7 +135,6 @@ impl Address {
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
-
 
     /// Returns `true` if the address is an IPv4 address
     pub fn is_ipv4(&self) -> bool {

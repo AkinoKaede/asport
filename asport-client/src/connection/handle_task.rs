@@ -18,14 +18,12 @@ use asport_quinn::{Connect, Packet, ServerHello};
 
 use crate::{
     error::Error,
-    utils::{ClientHelloFlagsBuilder, ProxyProtocol, UdpForwardMode, union_proxy_protocol_addresses},
+    utils::{
+        union_proxy_protocol_addresses, ClientHelloFlagsBuilder, ProxyProtocol, UdpForwardMode,
+    },
 };
 
-use super::{
-    Connection,
-    ERROR_CODE,
-    udp_session::UdpSession,
-};
+use super::{udp_session::UdpSession, Connection, ERROR_CODE};
 
 impl Connection {
     pub async fn client_hello(self, zero_rtt_accepted: Option<ZeroRttAccepted>) {
@@ -36,12 +34,16 @@ impl Connection {
 
         log::debug!("[client_hello] sending client hello");
 
-        match self.model.client_hello(
-            self.uuid,
-            self.password.clone(),
-            ClientHelloFlagsBuilder::new(self.network, self.udp_forward_mode),
-            self.expected_port_range,
-        ).await {
+        match self
+            .model
+            .client_hello(
+                self.uuid,
+                self.password.clone(),
+                ClientHelloFlagsBuilder::new(self.network, self.udp_forward_mode),
+                self.expected_port_range,
+            )
+            .await
+        {
             Ok(()) => log::info!("[client_hello] {uuid}", uuid = self.uuid),
             Err(err) => log::warn!("[client_hello] client hello sending error: {err}"),
         }
@@ -63,8 +65,10 @@ impl Connection {
     }
 
     pub async fn handle_server_hello(&self, server_hello: ServerHello) {
-        log::info!("[server_hello] remote port: {port}",
-                           port = server_hello.port().unwrap()); // safe to unwrap
+        log::info!(
+            "[server_hello] remote port: {port}",
+            port = server_hello.port().unwrap()
+        ); // safe to unwrap
     }
 
     pub async fn handle_connect(&self, conn: Connect) {
@@ -110,7 +114,9 @@ impl Connection {
                             ppp::v2::Version::Two | ppp::v2::Command::Proxy,
                             ppp::v2::Protocol::Stream,
                             addresses,
-                        ).build().unwrap();
+                        )
+                        .build()
+                        .unwrap();
                         Some(Bytes::from(v2))
                     }
                     _ => {
@@ -130,8 +136,9 @@ impl Connection {
                 Ok::<_, Error>(())
             } else {
                 let _ = conn.compat().shutdown().await;
-                Err(last_err
-                    .unwrap_or_else(|| Error::from(IoError::new(ErrorKind::NotFound, "no address resolved"))))?
+                Err(last_err.unwrap_or_else(|| {
+                    Error::from(IoError::new(ErrorKind::NotFound, "no address resolved"))
+                }))?
             }
         };
 
@@ -140,7 +147,6 @@ impl Connection {
             Err(err) => log::warn!("[connect] {source_addr_string}: {err}"),
         }
     }
-
 
     pub async fn handle_packet(&self, pkt: Packet) {
         let assoc_id = pkt.assoc_id();
@@ -175,7 +181,10 @@ impl Connection {
             );
 
             let Some(local_addr) = self.local.resolve().await?.next() else {
-                return Err(Error::from(IoError::new(ErrorKind::NotFound, "no address resolved")));
+                return Err(Error::from(IoError::new(
+                    ErrorKind::NotFound,
+                    "no address resolved",
+                )));
             };
 
             let session = match self.udp_sessions.lock().entry(assoc_id) {

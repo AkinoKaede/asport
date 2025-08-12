@@ -28,7 +28,6 @@ impl Authenticated {
     pub fn set(&self, port: u16) {
         self.0.port.store(Some(port));
 
-
         for waker in self.0.broadcast.lock().drain(..) {
             waker.wake();
         }

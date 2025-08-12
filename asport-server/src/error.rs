@@ -1,12 +1,13 @@
 use std::io::Error as IoError;
 
-use quinn::{ConnectionError, crypto::rustls::NoInitialCipherSuite};
+use crate::utils::{Network, SecurityType};
+use asport::Flags;
+use asport_quinn::Error as ModelError;
+use quinn::{crypto::rustls::NoInitialCipherSuite, ConnectionError};
+use quinn_hyphae::crypto::CryptoError;
 use rustls::Error as RustlsError;
 use thiserror::Error;
 use uuid::Uuid;
-use asport::Flags;
-use asport_quinn::Error as ModelError;
-use crate::utils::Network;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -42,6 +43,10 @@ pub enum Error {
     InvalidPrivateKey(&'static str),
     #[error("invalid flags: {0}")]
     InvalidFlags(Flags),
+    #[error("missing security configuration for {0}")]
+    MissingSecurityConfig(SecurityType),
+    #[error(transparent)]
+    QuinnHyphaeCryptoError(#[from] CryptoError),
 }
 
 impl Error {

@@ -57,8 +57,8 @@ impl Connection {
                 self.task_negotiation_timeout,
                 self.model.accept_uni_stream(recv),
             )
-                .await
-                .map_err(|_| Error::TaskNegotiationTimeout)??;
+            .await
+            .map_err(|_| Error::TaskNegotiationTimeout)??;
 
             if let Task::ServerHello(server_hello) = &task {
                 self.handshake(server_hello).await?;
@@ -74,17 +74,19 @@ impl Connection {
 
         let res = match pre_process.await {
             Ok(Task::ServerHello(server_hello)) => Ok(self.handle_server_hello(server_hello).await),
-            Ok(Task::Packet(pkt)) => if self.network.udp() {
-                match self.udp_forward_mode {
-                    UdpForwardMode::Quic => {
-                        self.handle_packet(pkt).await;
-                        Ok(())
+            Ok(Task::Packet(pkt)) => {
+                if self.network.udp() {
+                    match self.udp_forward_mode {
+                        UdpForwardMode::Quic => {
+                            self.handle_packet(pkt).await;
+                            Ok(())
+                        }
+                        UdpForwardMode::Native => Err(Error::WrongPacketSource),
                     }
-                    UdpForwardMode::Native => Err(Error::WrongPacketSource),
+                } else {
+                    Err(Error::NetworkDenied(Network::Udp))
                 }
-            } else {
-                Err(Error::NetworkDenied(Network::Udp))
-            },
+            }
             Ok(Task::Dissociate(assoc_id)) => Ok(self.handle_dissociate(assoc_id).await),
             Ok(_) => unreachable!(),
             Err(err) => Err(err),
@@ -101,8 +103,8 @@ impl Connection {
                 self.task_negotiation_timeout,
                 self.model.accept_bi_stream(send, recv),
             )
-                .await
-                .map_err(|_| Error::TaskNegotiationTimeout)??;
+            .await
+            .map_err(|_| Error::TaskNegotiationTimeout)??;
 
             tokio::select! {
                 () = self.auth.clone() => {}
@@ -113,11 +115,13 @@ impl Connection {
         };
 
         let res = match pre_process.await {
-            Ok(Task::Connect(connect)) => if self.network.tcp() {
-                self.handle_connect(connect).await;
-                Ok(())
-            } else {
-                Err(Error::NetworkDenied(Network::Tcp))
+            Ok(Task::Connect(connect)) => {
+                if self.network.tcp() {
+                    self.handle_connect(connect).await;
+                    Ok(())
+                } else {
+                    Err(Error::NetworkDenied(Network::Tcp))
+                }
             }
             Ok(_) => unreachable!(),
             Err(err) => Err(err),
@@ -132,17 +136,19 @@ impl Connection {
         log::debug!("incoming datagram");
         let res = match self.model.accept_datagram(dg) {
             Err(err) => Err::<(), Error>(Error::Model(err)),
-            Ok(Task::Packet(pkt)) => if self.network.udp() {
-                match self.udp_forward_mode {
-                    UdpForwardMode::Native => {
-                        self.handle_packet(pkt).await;
-                        Ok(())
+            Ok(Task::Packet(pkt)) => {
+                if self.network.udp() {
+                    match self.udp_forward_mode {
+                        UdpForwardMode::Native => {
+                            self.handle_packet(pkt).await;
+                            Ok(())
+                        }
+                        UdpForwardMode::Quic => Err(Error::WrongPacketSource),
                     }
-                    UdpForwardMode::Quic => Err(Error::WrongPacketSource),
+                } else {
+                    Err(Error::NetworkDenied(Network::Udp))
                 }
-            } else {
-                Err(Error::NetworkDenied(Network::Udp))
-            },
+            }
             _ => unreachable!(),
         };
 
