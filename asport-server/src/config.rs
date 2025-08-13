@@ -71,7 +71,10 @@ pub struct Config {
     #[serde(default = "default::receive_window")]
     pub receive_window: u32,
 
-    #[serde(default = "default::log_level")]
+    #[serde(
+        default = "default::log_level",
+        deserialize_with = "deserialize_from_str"
+    )]
     pub log_level: LevelFilter,
 }
 

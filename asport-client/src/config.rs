@@ -119,7 +119,10 @@ pub struct Config {
     )]
     pub proxy_protocol: ProxyProtocol,
 
-    #[serde(default = "default::log_level")]
+    #[serde(
+        default = "default::log_level",
+        deserialize_with = "deserialize_from_str"
+    )]
     pub log_level: LevelFilter,
 }
 
