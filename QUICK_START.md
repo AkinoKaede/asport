@@ -113,6 +113,28 @@ sudo install -m 644 systemd/system.asport-client.service /etc/systemd/system/asp
 sudo install -m 644 systemd/system.asport-client@.service /etc/systemd/system/asport-client@.service
 ```
 
+### Docker
+
+You can also run Asport in a Docker container. The Docker image is available on GitHub Container Registry.
+
+```bash
+# Run the server
+docker run -d --name asport-server \
+  -v /path/to/server.toml:/etc/asport/server.toml \
+  # Replace 443 with the port that server listens on
+  -p 443:443/udp \
+  # Replace <proxy-port> with the port you want to expose to the internet
+  -p <proxy-port>:<proxy-port> \
+  ghcr.io/akinokaede/asport-server:latest
+  
+# Run the client
+docker run -d --name asport-client \
+  -v /path/to/client.toml:/etc/asport/client.toml \
+  ghcr.io/akinokaede/asport-client:latest
+````
+
+***Tips:** If you don't want to debugging the Docker's network, you can use the `--network=host` option to run the container in host network mode. This will make the container use the host's network stack, so you can use Asport as running on the host directly.*
+
 ## Configuration
 
 ### Server
