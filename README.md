@@ -39,6 +39,7 @@ forward UDP packets, which can avoid this problem.
 - Some simple censorship circumvention features. You can bypass some DPI and probing by setting some options in configuration.
 You can bypass firewall in some companies, schools, and etc. (I don't encourage you to do this, but it's a feature.)
 The design of it is based my experience in developing some anti-censorship software.
+- Noise serves as a security layer that replaces TLS, offering greater ease of use and more flexibility than TLS.
 
 ## Quick Start
 
