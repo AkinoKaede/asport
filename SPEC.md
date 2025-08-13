@@ -102,7 +102,27 @@ struct address_h {
 After the QUIC handshake, the client sends a `ClientHello` command to the server. The `ClientHello` command contains
 the UUID, the token, the flags, and the expected port range.
 
-The `token` is a 256-bit hash of the user's password using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session. The server will verify the token to authenticate the user.
+The `token` is a 256-bit hash of the user's uuid and password using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session if using TLS as security layer. The pseudocode as follows:
+
+```pesudo
+token =  TLS_ExportKeyingMaterial(uuid, password)
+```
+
+If failed to export the TLS keying material (for example, use Noise as security layer), the client SHOULD use BLAKE3-256 to hash the uuid and password, and then convert it to a 256-bit token, and the pseudocode as follows:
+
+```pesudo
+function export_keying_material(label, context)
+    info = "asport key derivation"
+    derived_key = BLAKE3_DeriveKey(info, context)
+    mac = BLAKE3_KeyedHash(derived_key, label)
+    return mac
+end function
+
+
+token = derive_and_mac(context_data, label_data)
+```
+
+The server will verify the token to authenticate the user.
 
 The `Flags` is a bitmask that indicates the features that the client supports. The `Tcp` flag indicates that the client supports TCP forwarding. The `UdpEnabled` flag indicates that the client supports UDP forwarding. The `UdpModeQuic` flag indicates that the client wants to use QUIC mode for UDP forwarding.
 
