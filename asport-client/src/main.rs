@@ -18,10 +18,13 @@
 
 use std::{cell::LazyCell, path::PathBuf, process};
 
-use clap::Parser;
-use env_logger::Builder as LoggerBuilder;
-
 use crate::connection::Connection;
+use base64::{engine::general_purpose::STANDARD, Engine};
+use clap::{Parser, Subcommand};
+use env_logger::Builder as LoggerBuilder;
+use quinn_hyphae::RustCryptoBackend;
+use rand_core::OsRng;
+use uuid::Uuid;
 
 mod config;
 mod connection;
@@ -31,15 +34,39 @@ mod utils;
 #[derive(Parser)]
 #[command(about, author, version)]
 struct Arguments {
-    #[clap(short, long)]
-    config: Option<PathBuf>,
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Run {
+        #[clap(short, long)]
+        config: Option<PathBuf>,
+    },
+    Uuid,
+    X25519,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Arguments::parse();
 
-    let config_path = args.config.unwrap_or_else(|| {
+    match args.command {
+        Commands::Run { config } => {
+            run(config).await;
+        }
+        Commands::Uuid => {
+            uuid().await;
+        }
+        Commands::X25519 => {
+            x25519().await;
+        }
+    }
+}
+
+async fn run(config: Option<PathBuf>) {
+    let config_path = config.unwrap_or_else(|| {
         if let Some(path) = find_config() {
             path
         } else {
@@ -71,6 +98,25 @@ async fn main() {
     }
 
     Connection::start().await;
+}
+
+async fn uuid() {
+    let uuid = Uuid::new_v4();
+    println!("{}", uuid);
+}
+
+async fn x25519() {
+    let private_key = RustCryptoBackend.new_secret_key(&mut OsRng);
+    let public_key = RustCryptoBackend.public_key(&private_key);
+
+    let private_key_b64 = STANDARD.encode(private_key.as_ref());
+    let public_key_b64 = STANDARD.encode(public_key.as_ref());
+
+    println!("Private Key:");
+    println!("{}", private_key_b64);
+    println!();
+    println!("Public Key:");
+    println!("{}", public_key_b64);
 }
 
 const CONFIG_EXTENSIONS: [&str; 6] = ["json", "jsonc", "ron", "toml", "yaml", "yml"];
