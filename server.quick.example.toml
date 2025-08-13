@@ -62,7 +62,7 @@ allow_ports = { start = 1, end = 63335 }
 # Users configuration.
 # Format: <uuid> = "<password>"
 # Note: UUID must be unique in all proxies.
-# You can use `uuidgen` tools to generate a UUID.
+# You can use `asport-server uuid` command to generate a UUID.
 # The example UUID and password are only examples. You MUST replace them with your own UUID and password.
 [proxies.users]
 00000000-0000-0000-0000-000000000000 = "password"

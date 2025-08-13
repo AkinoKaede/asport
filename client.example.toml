@@ -177,6 +177,7 @@ pattern = "Noise_NK_25519_ChaChaPoly_BLAKE2s"
 
 # Local static private key for Noise.
 # Note: This private key is only an example. You should replace it with your own private key.
+# You can use `asport-client x25519` command to generate a keypair including a private key and a public key.
 local_private_key = "YD3hWvBW6z78T/AJXxy8jWPgLK+JXuzlngiaB3eD5uY="
 
 # Remote public key for Noise.

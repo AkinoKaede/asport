@@ -129,6 +129,7 @@ pattern = "Noise_NK_25519_ChaChaPoly_BLAKE2s"
 
 # Local static private key for Noise.
 # Note: This private key is only an example. You should replace it with your own private key.
+# You can use `asport-server x25519` command to generate a keypair including a private key and a public key.
 local_private_key = "VyAiUGOv3aRV9FopncH4NOu10bDEPpWBio3lEDoDCUQ="
 # Remote public key for Noise.
 
@@ -138,6 +139,8 @@ remote_public_key = "C9UaWUuTjX5h2J8sC9sltj6msQwBkX59YIEy84ZfyWU="
 # Users configuration.
 # Format: <uuid> = "<password>"
 # Note: UUID must be unique in all proxies.
+# You can use `asport-server uuid` command to generate a UUID.
+# The example UUID and password are only examples. You MUST replace them with your own UUID and password.
 [proxies.users]
 00000000-0000-0000-0000-000000000000 = "password"
 00000000-0000-0000-0000-000000000001 = "password"
