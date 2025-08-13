@@ -215,6 +215,7 @@ dependencies = [
  "env_logger",
  "humantime",
  "log",
+ "once_cell",
  "parking_lot",
  "quinn",
  "quinn-hyphae",
