@@ -14,12 +14,13 @@ When paired with QUIC, ASPORT can achieve:
 
 - Fully multiplexed. All streams and datagrams are multiplexed in a single QUIC connection.
 - Two UDP proxying modes:
-    - `native`: Having characteristics of native UDP mechanism, transferring UDP packets lossy using QUIC unreliable datagram.
-    - `quic`: Transferring UDP packets lossless using QUIC unidirectional streams.
+  - `native`: Having characteristics of native UDP mechanism, transferring UDP packets lossy using QUIC unreliable
+    datagram.
+  - `quic`: Transferring UDP packets lossless using QUIC unidirectional streams.
 - All the advantages of QUIC, including but not limited to:
-    - Bidirectional user-space congestion control.
-    - Optional 0-RTT connection handshake.
-    - Connection migration.
+  - Bidirectional user-space congestion control.
+  - Optional 0-RTT connection handshake.
+  - Connection migration.
 
 The specification of ASPORT can be found in [SPEC.md](./SPEC.md).
 
@@ -29,16 +30,20 @@ Why should you choose Asport?
 
 - Secure. ASPORT uses QUIC as its transport layer, which uses TLS 1.3 for encryption.
 - Low latency. ASPORT uses QUIC's stream multiplexing to reduce the latency caused by the additional handshake.
-- Higher transfer speed than traditional multiplexed TCP-based proxies. Many ISP limits the speed of a single TCP connection,
-but QUIC can bypass this limitation.
-- Awesome UDP forwarding. Many similar projects use stream-based connection to forward UDP packets (e.g. UDP over TCP), when
-loss a packet, subsequent packets will be delayed. ASPORT uses QUIC's unidirectional stream and unreliable datagram to
-forward UDP packets, which can avoid this problem.
-- User-space congestion control. You can use BBR on any platform, even if the platform does not support it, such as macOS. 
+- Higher transfer speed than traditional multiplexed TCP-based proxies. Many ISP limits the speed of a single TCP
+  connection,
+  but QUIC can bypass this limitation.
+- Awesome UDP forwarding. Many similar projects use stream-based connection to forward UDP packets (e.g. UDP over TCP),
+  when
+  loss a packet, subsequent packets will be delayed. ASPORT uses QUIC's unidirectional stream and unreliable datagram to
+  forward UDP packets, which can avoid this problem.
+- User-space congestion control. You can use BBR on any platform, even if the platform does not support it, such as
+  macOS.
 - [PROXY protocol](https://www.haproxy.org/download/2.4/doc/proxy-protocol.txt) support in Client.
-- Some simple censorship circumvention features. You can bypass some DPI and probing by setting some options in configuration.
-You can bypass firewall in some companies, schools, and etc. (I don't encourage you to do this, but it's a feature.)
-The design of it is based my experience in developing some anti-censorship software.
+- Some simple censorship circumvention features. You can bypass some DPI and probing by setting some options in
+  configuration.
+  You can bypass firewall in some companies, schools, and etc. (I don't encourage you to do this, but it's a feature.)
+  The design of it is based my experience in developing some anti-censorship software.
 - Noise serves as a security layer that replaces TLS, offering greater ease of use and more flexibility than TLS.
 
 ## Quick Start
@@ -49,8 +54,10 @@ Please refer to the [Quick Start](./QUICK_START.md) guide.
 
 This repository contains the following crates:
 
-- **[asport](./asport)** - Library. The protocol itself, protocol & model abstraction, synchronous / asynchronous marshalling.
-- **[asport-quinn](./asport-quinn)** - Library. A wrapper around [quinn](https://github.com/quinn-rs/quinn) to provide functions of ASPORT.
+- **[asport](./asport)** - Library. The protocol itself, protocol & model abstraction, synchronous / asynchronous
+  marshalling.
+- **[asport-quinn](./asport-quinn)** - Library. A wrapper around [quinn](https://github.com/quinn-rs/quinn) to provide
+  functions of ASPORT.
 - **[asport-server](./asport-server)** - Binary. A simple ASPORT server implementation as a reference.
 - **[asport-client](./asport-client)** - Binary. A simple ASPORT client implementation as a reference.
 
@@ -68,8 +75,10 @@ This repository contains the following crates:
 
 ## Credits
 
-This project is highly inspired by [TUIC](https://github.com/EAimTY/tuic). Many ideas and code snippets are borrowed from
-[TUIC](https://github.com/EAimTY/tuic). Thanks to the authors and contributors of TUIC for providing such a great project.
+This project is highly inspired by [TUIC](https://github.com/EAimTY/tuic). Many ideas and code snippets are borrowed
+from
+[TUIC](https://github.com/EAimTY/tuic). Thanks to the authors and contributors of TUIC for providing such a great
+project.
 
 ## License
 

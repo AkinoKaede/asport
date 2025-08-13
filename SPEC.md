@@ -2,9 +2,10 @@
 
 ## Version
 
-`0x00` _DRAFT_ 
+`0x00` _DRAFT_
 
 ## Conventions
+
 The key terms "MUST", "SHOULD" and "SHOULD NOT" in this protocol specification are to be interpreted as described
 in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
@@ -18,6 +19,7 @@ The `Command` header contains the type of the command and the command-specific d
 All fields are in Big Endian unless otherwise noted.
 
 ## Command
+
 The Definition of the `Command` header is as follows:
 
 ```p4
@@ -102,13 +104,16 @@ struct address_h {
 After the QUIC handshake, the client sends a `ClientHello` command to the server. The `ClientHello` command contains
 the UUID, the token, the flags, and the expected port range.
 
-The `token` is a 256-bit hash of the user's uuid and password using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session if using TLS as security layer. The pseudocode as follows:
+The `token` is a 256-bit hash of the user's uuid and password
+using [TLS Keying Material Exporter](https://www.rfc-editor.org/rfc/rfc5705) on current TLS session if using TLS as
+security layer. The pseudocode as follows:
 
 ```pesudo
 token =  TLS_ExportKeyingMaterial(uuid, password)
 ```
 
-If failed to export the TLS keying material (for example, use Noise as security layer), the client SHOULD use BLAKE3-256 to hash the uuid and password, and then convert it to a 256-bit token, and the pseudocode as follows:
+If failed to export the TLS keying material (for example, use Noise as security layer), the client SHOULD use BLAKE3-256
+to hash the uuid and password, and then convert it to a 256-bit token, and the pseudocode as follows:
 
 ```pesudo
 function export_keying_material(label, context)
@@ -124,7 +129,9 @@ token = derive_and_mac(context_data, label_data)
 
 The server will verify the token to authenticate the user.
 
-The `Flags` is a bitmask that indicates the features that the client supports. The `Tcp` flag indicates that the client supports TCP forwarding. The `UdpEnabled` flag indicates that the client supports UDP forwarding. The `UdpModeQuic` flag indicates that the client wants to use QUIC mode for UDP forwarding.
+The `Flags` is a bitmask that indicates the features that the client supports. The `Tcp` flag indicates that the client
+supports TCP forwarding. The `UdpEnabled` flag indicates that the client supports UDP forwarding. The `UdpModeQuic` flag
+indicates that the client wants to use QUIC mode for UDP forwarding.
 
 The expected port range is a header that contains the start and end port of the expected port range.
 
@@ -227,7 +234,8 @@ header connect_h {
 
 ASPORT achieves 0-RTT UDP forwarding by syncing UDP session ID (associate ID) between the client and the server.
 
-Client SHOULD create a UDP session table for each QUIC connection, mapping every associate ID to an associated UDP socket.
+Client SHOULD create a UDP session table for each QUIC connection, mapping every associate ID to an associated UDP
+socket.
 
 Server SHOULD crate a UDP session table for each QUIC connection, mapping every associate ID to a source address.
 
@@ -237,7 +245,8 @@ When receiving a UDP packet, the server SHOULD check the source address is alrea
 If not, the server SHOULD allocate an associate ID for the source address and prefix the UDP packet with the `Packet`
 command header then sends to the client.
 
-When receiving a `Packet` command, the client SHOULD check whether the associate ID is already associated with a UDP socket.
+When receiving a `Packet` command, the client SHOULD check whether the associate ID is already associated with a UDP
+socket.
 If not, the client SHOULD allocate a UDP socket for the associate ID and send the UDP packet to the target that the
 client wants to forward and accept UDP packets from any destination at the same time, prefixing them with the `Packet`
 command header then sends back to the server. The server should check the associate ID and the target address before
@@ -291,7 +300,8 @@ header dissociate_h {
 - Transport: Unreliable Datagram
 - Direction: Client -> Server
 
-Heartbeat is a command that is used to keep the connection alive. The client SHOULD send it using the unreliable datagram in a interval.
+Heartbeat is a command that is used to keep the connection alive. The client SHOULD send it using the unreliable
+datagram in a interval.
 The payload of the `Heartbeat` command is empty.
 
 ```p4

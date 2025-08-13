@@ -46,14 +46,14 @@ You can install Asport from [NUR](https://github.com/nix-community/NUR) by follo
 
 1. Install NUR following the [NUR documentation](https://github.com/nix-community/NUR?tab=readme-ov-file#installation)
 2. Choose one of the following methods to install Asport:
-    - nix-env: `nix-env -iA nur.repos.akinokaede.asport`
-    - NixOS Configuration: 
-      ```nix
-      environment.systemPackages = with pkgs; [
-        nur.repos.akinokaede.asport
-      ];
-      ```
-   - nix-shell: `nix-shell -p nur.repos.akinokaede.asport`
+  - nix-env: `nix-env -iA nur.repos.akinokaede.asport`
+  - NixOS Configuration:
+    ```nix
+    environment.systemPackages = with pkgs; [
+      nur.repos.akinokaede.asport
+    ];
+    ```
+  - nix-shell: `nix-shell -p nur.repos.akinokaede.asport`
 
 ### Manual
 
@@ -133,7 +133,9 @@ docker run -d --name asport-client \
   ghcr.io/akinokaede/asport-client:latest
 ````
 
-***Tips:** If you don't want to debugging the Docker's network, you can use the `--network=host` option to run the container in host network mode. This will make the container use the host's network stack, so you can use Asport as running on the host directly.*
+***Tips:** If you don't want to debugging the Docker's network, you can use the `--network=host` option to run the
+container in host network mode. This will make the container use the host's network stack, so you can use Asport as
+running on the host directly.*
 
 ## Configuration
 
