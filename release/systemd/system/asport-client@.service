@@ -4,7 +4,7 @@ Documentation=https://github.com/AkinoKaede/asport
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/asport-client --config /usr/local/etc/asport/%i
+ExecStart=/usr/local/bin/asport-client run --config /usr/local/etc/asport/%i
 DynamicUser=true
 Restart=on-failure
 RestartPreventExitStatus=23
