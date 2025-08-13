@@ -140,11 +140,7 @@ fn find_config() -> Option<PathBuf> {
         }
     }
 
-    let xdg_dirs = if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix("asport") {
-        xdg_dirs
-    } else {
-        return None;
-    };
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("asport");
 
     for config in CONFIG_NAMES.iter() {
         if let Some(path) = xdg_dirs.find_config_file(config) {
