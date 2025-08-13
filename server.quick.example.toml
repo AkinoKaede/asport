@@ -49,11 +49,9 @@ certificate = "path/to/cert.pem"
 # Note: DER and PEM format are supported for file.
 private_key = "path/to/key.pem"
 
-
 # Reverse proxies configuration.
 # Note: Multiple proxies are supported.
 [[proxies]]
-
 # Allow ports.
 # Note: If you want to allow all ports, you can set it to { start = 1, end = 65535 }.
 # See more details in full exmaple configuration.

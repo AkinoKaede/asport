@@ -60,37 +60,6 @@ receive_window = 8_388_608
 # Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
 log_level = "warn"
 
-# Reverse proxies configuration.
-# Note: Multiple proxies are supported.
-[[proxies]]
-
-# Bind address for reverse proxy.
-# Format: <ip>
-# Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
-bind_ip = "[::]"
-
-# Allow ports.
-# Default:
-# Linux and Android: software will get ephemeral ports range from system. If failed, it will use 32768-60999.
-# macOS, iOS and FreeBSD: software will get ephemeral ports range from system. If failed, it will use 49152-65535.
-# Windows and other systems: software will use 49152-65535.
-# Format 1: <port>
-# Format 2: { start = <start-port>, end = <end-port> }
-# Format 3: [<port-1>, <port-2>, { start = <start-port-3>, end = <end-port-3> }, ...]
-allow_ports = { start = 49152, end = 65535 }
-
-# Listen on IPv6 only.
-# Default: NOT SET
-# Note: Even if you set it to false, and `bind_ip` is an IPv4, software will PANIC.
-# It's recommended to NOT SET this option.
-only_v6 = false
-
-# Allow network.
-# Default: "both"
-# Options: "tcp", "udp", "both"
-# Note: ["tcp", "udp"] is also supported, it's equivalent to "both".
-allow_network = "both"
-
 # Security configuration.
 [security]
 # Security layer for QUIC.
@@ -131,10 +100,40 @@ pattern = "Noise_NK_25519_ChaChaPoly_BLAKE2s"
 # Note: This private key is only an example. You should replace it with your own private key.
 # You can use `asport-server x25519` command to generate a key pair including a private key and a public key.
 local_private_key = "VyAiUGOv3aRV9FopncH4NOu10bDEPpWBio3lEDoDCUQ="
-# Remote public key for Noise.
 
+# Remote public key for Noise.
 # Note: This public key is only an example. You should replace it with your own public key.
 remote_public_key = "C9UaWUuTjX5h2J8sC9sltj6msQwBkX59YIEy84ZfyWU="
+
+# Reverse proxies configuration.
+# Note: Multiple proxies are supported.
+[[proxies]]
+# Bind address for reverse proxy.
+# Format: <ip>
+# Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
+bind_ip = "[::]"
+
+# Allow ports.
+# Default:
+# Linux and Android: software will get ephemeral ports range from system. If failed, it will use 32768-60999.
+# macOS, iOS and FreeBSD: software will get ephemeral ports range from system. If failed, it will use 49152-65535.
+# Windows and other systems: software will use 49152-65535.
+# Format 1: <port>
+# Format 2: { start = <start-port>, end = <end-port> }
+# Format 3: [<port-1>, <port-2>, { start = <start-port-3>, end = <end-port-3> }, ...]
+allow_ports = { start = 49152, end = 65535 }
+
+# Listen on IPv6 only.
+# Default: NOT SET
+# Note: Even if you set it to false, and `bind_ip` is an IPv4, software will PANIC.
+# It's recommended to NOT SET this option.
+only_v6 = false
+
+# Allow network.
+# Default: "both"
+# Options: "tcp", "udp", "both"
+# Note: ["tcp", "udp"] is also supported, it's equivalent to "both".
+allow_network = "both"
 
 # Users configuration.
 # Format: <uuid> = "<password>"
