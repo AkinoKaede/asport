@@ -40,9 +40,20 @@ brew services start asport-client
 
 ### Nix
 
-Because asport uses new features in Rust 1.80.0, but the Rust in latest Nix stable channel (24.05) is 1.77.2, so we cannot use Nix to install asport directly.
+#### NUR
 
-However, here is a [nix package](https://github.com/AkinoKaede/nur-packages/blob/master/pkgs/asport/default.nix) in my NUR as s reference.
+You can install Asport from [NUR](https://github.com/nix-community/NUR) by following the steps below:
+
+1. Install NUR following the [NUR documentation](https://github.com/nix-community/NUR?tab=readme-ov-file#installation)
+2. Choose one of the following methods to install Asport:
+    - nix-env: `nix-env -iA nur.repos.akinokaede.asport`
+    - NixOS Configuration: 
+      ```nix
+      environment.systemPackages = with pkgs; [
+        nur.repos.akinokaede.asport
+      ];
+      ```
+   - nix-shell: `nix-shell -p nur.repos.akinokaede.asport`
 
 ### Manual
 
