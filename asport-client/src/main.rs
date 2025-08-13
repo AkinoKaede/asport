@@ -32,7 +32,11 @@ mod error;
 mod utils;
 
 #[derive(Parser)]
-#[command(about, author, version)]
+#[command(
+    about = "Asport, a quick and secure reverse proxy based on QUIC for NAT traversal. asport-client is a simple Asport client implementation.",
+    author,
+    version
+)]
 struct Arguments {
     #[clap(subcommand)]
     command: Commands,
@@ -40,11 +44,14 @@ struct Arguments {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[clap(about = "Run the Asport client")]
     Run {
         #[clap(short, long)]
         config: Option<PathBuf>,
     },
+    #[clap(about = "Generate a new UUID")]
     Uuid,
+    #[clap(about = "Generate a new X25519 keypair", alias = "curve25519")]
     X25519,
 }
 
