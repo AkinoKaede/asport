@@ -51,7 +51,7 @@ enum Commands {
     },
     #[clap(about = "Generate a new UUID")]
     Uuid,
-    #[clap(about = "Generate a new X25519 keypair", alias = "curve25519")]
+    #[clap(about = "Generate a new X25519 key pair", alias = "curve25519")]
     X25519,
 }
 
