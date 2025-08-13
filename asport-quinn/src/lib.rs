@@ -633,10 +633,11 @@ impl KeyingMaterialExporterImpl for KeyingMaterialExporter {
             Err(_) => {
                 // Fallback to BLAKE3 key derivation if export fails
                 // This is a workaround for Noise handshake implementations that do not support keying material export.
-                let info = "session key derivation";
-                let session_key = blake3::derive_key(&info, context);
+    
+                let info = "asport key derivation";
+                let derived_key = blake3::derive_key(&info, context);
 
-                let mac = blake3::keyed_hash(&session_key, label.as_ref());
+                let mac = blake3::keyed_hash(&derived_key, label.as_ref());
                 buf.copy_from_slice(mac.as_bytes());
             }
         }
