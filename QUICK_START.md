@@ -120,10 +120,10 @@ If you want to learn more about the configuration, please refer to the [client.e
 
 ```bash
 # Run Server
-asport-server -c server.toml
+asport-server run -c server.toml
 
 # Run Client
-asport-client -c client.toml
+asport-client run -c client.toml
 ```
 
 On Linux distros that use systemd as its init system, you can also start the server and client with the following
