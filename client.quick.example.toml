@@ -46,6 +46,22 @@ udp_forward_mode = "native"
 # Use single port if you want to use a fixed port.
 port = 2024
 
+# Log level.
+# Default: "warn"
+# Options: "trace", "debug", "info", "warn", "error", "off"
+# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
+log_level = "warn"
+
+# Security configuration.
+[security]
+# Security layer for QUIC.
+# Default: "tls"
+# Options: "tls", "noise"
+# Note: "noise" is not recommended for production use.
+type = "tls"
+
+# TLS configuration for security layer.
+[security.tls]
 # SNI for QUIC handshake.
 # Default: <host> in `server`
 # Note: If the host of `server` is an IP address you will also need to set this.
@@ -62,9 +78,3 @@ congestion_control = "bbr"
 # Default: ["asport"]
 # Note: set to ["h3"] to bypass some DPI.
 alpn = ["h3"]
-
-# Log level.
-# Default: "warn"
-# Options: "trace", "debug", "info", "warn", "error", "off"
-# Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
-log_level = "warn"

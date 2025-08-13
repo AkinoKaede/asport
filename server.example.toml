@@ -5,29 +5,11 @@
 # Note: We recommend use [::] for public servers. If you want to listen on IPv4 only, use 0.0.0.0.
 server = "[::]:443"
 
-# Path to the certificate file or the certificate in PEM format.
-# Note: DER and PEM format are supported for file.
-certificate = "path/to/cert.pem"
-
-# Path to the private key file or the private key in PEM format.
-# Note: DER and PEM format are supported for file.
-private_key = "path/to/key.pem"
-
 # Congestion control algorithm.
 # Default: "cubic"
 # Options: "cubic", "reno", "bbr"
 # Note: BBR may incrase transmission rate.
 congestion_control = "cubic"
-
-# ALPN for QUIC handshake.
-# Default: ["asport"]
-# Format: ["<protocol-1>", "<protocol-2>", ...]
-# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the client's ALPN to ["h3"].
-alpn = ["asport"]
-
-# Enable 0-RTT handshake.
-# Default: false
-zero_rtt_handshake = false
 
 # Listen on IPv6 only.
 # Default: NOT SET
@@ -108,6 +90,50 @@ only_v6 = false
 # Options: "tcp", "udp", "both"
 # Note: ["tcp", "udp"] is also supported, it's equivalent to "both".
 allow_network = "both"
+
+# Security configuration.
+[security]
+# Security layer for QUIC.
+# Default: "tls"
+# Options: "tls", "noise"
+# Note: "noise" is not recommended for production use.
+type = "tls"
+
+# Enable 0-RTT handshake.
+# Default: false
+# Note: 0-RTT handshake is not supported with Noise currently.
+zero_rtt_handshake = false
+
+# TLS configuration for security layer.
+[security.tls]
+# Path to the certificate file or the certificate in PEM format.
+# Note: DER and PEM format are supported for file.
+certificate = "path/to/cert.pem"
+
+# Path to the private key file or the private key in PEM format.
+# Note: DER and PEM format are supported for file.
+private_key = "path/to/key.pem"
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Format: ["<protocol-1>", "<protocol-2>", ...]
+# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the client's ALPN to ["h3"].
+alpn = ["asport"]
+
+# Noise configuration for security layer.
+[security.noise]
+# Noise protocol pattern for handshake.
+# Default: "Noise_NK_25519_ChaChaPoly_BLAKE2s"
+# Options: "Noise_NK_25519_ChaChaPoly_BLAKE2s", "Noise_KN_25519_ChaChaPoly_BLAKE2s", "Noise_NN_25519_ChaChaPoly_BLAKE2s", etc.
+pattern = "Noise_NK_25519_ChaChaPoly_BLAKE2s"
+
+# Local static private key for Noise.
+# Note: This private key is only an example. You should replace it with your own private key.
+local_private_key = "VyAiUGOv3aRV9FopncH4NOu10bDEPpWBio3lEDoDCUQ="
+# Remote public key for Noise.
+
+# Note: This public key is only an example. You should replace it with your own public key.
+remote_public_key = "C9UaWUuTjX5h2J8sC9sltj6msQwBkX59YIEy84ZfyWU="
 
 # Users configuration.
 # Format: <uuid> = "<password>"

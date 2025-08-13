@@ -44,34 +44,12 @@ udp_timeout = "60s"
 # Note: If server don't have any available port in this range, the handshake will fail.
 expected_port_range = [1, 65535]
 
-# SNI for QUIC handshake.
-# Default: <host> in `server`
-# Note: If the host of `server` is an IP address you will also need to set this.
-server_name = "asport.akinokaede.com"
-
-# Skip certificate verification.
-# default: false
-skip_certificate_verification = false
-
-# Disable SNI for QUIC handshake.
-# Default: false
-disable_sni = false
 
 # Congestion control algorithm.
 # Default: "cubic"
 # Options: "cubic", "reno", "bbr"
 # Note: BBR may incrase transmission rate.
 congestion_control = "cubic"
-
-# ALPN for QUIC handshake.
-# Default: ["asport"]
-# Format: ["<protocol-1>", "<protocol-2>", ...]
-# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the server's ALPN to ["h3"].
-alpn = ["asport"]
-
-# Enable 0-RTT handshake.
-# Default: false
-zero_rtt_handshake = false
 
 # Health check interval.
 # Default: "20s"
@@ -135,10 +113,43 @@ proxy_protocol = "disable"
 # Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
 log_level = "warn"
 
+# Security configuration.
+[security]
+# Security layer for QUIC.
+# Default: "tls"
+# Options: "tls", "noise"
+# Note: "noise" is not recommended for production use.
+type = "tls"
+
+# Enable 0-RTT handshake.
+# Default: false
+# Note: 0-RTT handshake is not supported with Noise currently.
+zero_rtt_handshake = false
+
+# TLS configuration for security layer.
+[security.tls]
+# SNI for QUIC handshake.
+# Default: <host> in `server`
+# Note: If the host of `server` is an IP address you will also need to set this.
+server_name = "asport.akinokaede.com"
+
+# Skip certificate verification.
+# default: false
+skip_certificate_verification = false
+
+# Disable SNI for QUIC handshake.
+# Default: false
+disable_sni = false
+
+# ALPN for QUIC handshake.
+# Default: ["asport"]
+# Format: ["<protocol-1>", "<protocol-2>", ...]
+# Note: If you want to bypass some DPI, you can change this to ["h3"]. And you should also change the server's ALPN to ["h3"].
+alpn = ["asport"]
+
 # Certificate verification.
 # Note: You may need to set this if you use a self-signed certificate.
-[certificates]
-
+[security.tls.certificates]
 # Path to the root certificates.
 # Format: ["<path-1>", "<path-2>", ...]
 # Note: DER and PEM format are supported.
@@ -156,3 +167,18 @@ pem = """
 # Default: false
 # Note: If you set this to true, the system root certificates will not be used.
 disable_native = false
+
+# Noise configuration for security layer.
+[security.noise]
+# Noise protocol pattern for handshake.
+# Default: "Noise_NK_25519_ChaChaPoly_BLAKE2s"
+# Options: "Noise_NK_25519_ChaChaPoly_BLAKE2s", "Noise_KN_25519_ChaChaPoly_BLAKE2s", "Noise_NN_25519_ChaChaPoly_BLAKE2s", etc.
+pattern = "Noise_NK_25519_ChaChaPoly_BLAKE2s"
+
+# Local static private key for Noise.
+# Note: This private key is only an example. You should replace it with your own private key.
+local_private_key = "YD3hWvBW6z78T/AJXxy8jWPgLK+JXuzlngiaB3eD5uY="
+
+# Remote public key for Noise.
+# Note: This public key is only an example. You should replace it with your own public key.
+remote_public_key = "GM7hTBIbrZO51K2WTgxnT7Nj1k7w/Rc+ZJK3WFZC4Vc="

@@ -6,16 +6,6 @@
 # Port 443 may be blocked by some ISPs. You can use other ports such as 4443.
 server = "[::]:443"
 
-# Path to the certificate file.
-# Note: DER and PEM format are supported.
-# You can use acme.sh to get a free certificate.
-# See also: https://acme.sh
-certificate = "path/to/cert.pem"
-
-# Path to the private key file.
-# Note: DER and PEM format are supported.
-private_key = "path/to/key.pem"
-
 # Congestion control algorithm.
 # Default: "cubic"
 # Options: "cubic", "reno", "bbr"
@@ -38,6 +28,27 @@ authentication_failed_reply = false
 # Options: "trace", "debug", "info", "warn", "error", "off"
 # Note: If you want sumbit a bug report, you should set this to "trace" or "debug"
 log_level = "warn"
+
+# Security configuration.
+[security]
+# Security layer for QUIC.
+# Default: "tls"
+# Options: "tls", "noise"
+# Note: "noise" is not recommended for production use.
+type = "tls"
+
+# TLS configuration for security layer.
+[security.tls]
+# Path to the certificate file or the certificate in PEM format.
+# Note: DER and PEM format are supported for file.
+# You can use acme.sh to get a free certificate.
+# See also: https://acme.sh
+certificate = "path/to/cert.pem"
+
+# Path to the private key file or the private key in PEM format.
+# Note: DER and PEM format are supported for file.
+private_key = "path/to/key.pem"
+
 
 # Reverse proxies configuration.
 # Note: Multiple proxies are supported.
