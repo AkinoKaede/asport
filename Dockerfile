@@ -20,4 +20,4 @@ COPY --from=builder /build/target/release/asport-server /usr/bin/asport-server
 
 ENTRYPOINT ["asport-server"]
 
-CMD ["--config", "/etc/asport/server.toml"]
+CMD ["run", "--config", "/etc/asport/server.toml"]
