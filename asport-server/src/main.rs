@@ -53,6 +53,8 @@ enum Commands {
     Uuid,
     #[clap(about = "Generate a new X25519 key pair", alias = "curve25519")]
     X25519,
+    #[clap(about = "Display the license information", alias = "copying")]
+    License,
 }
 
 #[tokio::main]
@@ -68,6 +70,9 @@ async fn main() {
         }
         Commands::X25519 => {
             x25519().await;
+        }
+        Commands::License => {
+            license().await;
         }
     }
 }
@@ -122,6 +127,24 @@ async fn x25519() {
     println!();
     println!("Public Key:");
     println!("{}", public_key_b64);
+}
+
+async fn license() {
+    println!("Asport, a quick and secure reverse proxy based on QUIC for NAT traversal.");
+    println!("Copyright (C) 2024 Kaede Akino");
+    println!();
+    println!("This program is free software: you can redistribute it and/or modify");
+    println!("it under the terms of the GNU General Public License as published by");
+    println!("the Free Software Foundation, either version 3 of the License, or");
+    println!("(at your option) any later version.");
+    println!();
+    println!("This program is distributed in the hope that it will be useful,");
+    println!("but WITHOUT ANY WARRANTY; without even the implied warranty of");
+    println!("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the");
+    println!("GNU General Public License for more details.");
+    println!();
+    println!("You should have received a copy of the GNU General Public License");
+    println!("along with this program. If not, see <http://www.gnu.org/licenses/>.");
 }
 
 const CONFIG_EXTENSIONS: [&str; 6] = ["json", "jsonc", "ron", "toml", "yaml", "yml"];
