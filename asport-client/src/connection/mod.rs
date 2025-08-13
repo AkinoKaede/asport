@@ -2,12 +2,11 @@ use std::{
     collections::HashMap,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket},
     ops::RangeInclusive,
-    sync::{atomic::AtomicU32, Arc},
+    sync::{atomic::AtomicU32, Arc, OnceLock},
     time::Duration,
 };
 
 use crossbeam_utils::atomic::AtomicCell;
-use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use quinn::{
     congestion::{BbrConfig, CubicConfig, NewRenoConfig},
@@ -48,7 +47,7 @@ mod handle_stream;
 mod handle_task;
 mod udp_session;
 
-static ENDPOINT: OnceCell<Mutex<Endpoint>> = OnceCell::new();
+static ENDPOINT: OnceLock<Mutex<Endpoint>> = OnceLock::new();
 static CONNECTION: AsyncOnceCell<AsyncMutex<Connection>> = AsyncOnceCell::const_new();
 static HEALTHY_CHECK: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));
 static TIMEOUT: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));

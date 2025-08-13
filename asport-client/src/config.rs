@@ -1,11 +1,15 @@
 use std::{
-    fmt::Display, ops::RangeInclusive, path::PathBuf, str::FromStr, sync::Arc, time::Duration,
+    fmt::Display,
+    ops::RangeInclusive,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, OnceLock},
+    time::Duration,
 };
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use humantime::Duration as HumanDuration;
 use log::LevelFilter;
-use once_cell::sync::OnceCell;
 use rustls::RootCertStore;
 use serde::{de::Error as DeError, Deserialize, Deserializer};
 use uuid::Uuid;
@@ -15,7 +19,7 @@ use crate::utils::{
 };
 
 // TODO: need a better way to do this
-static CONFIG_BASE_PATH: OnceCell<PathBuf> = OnceCell::new();
+static CONFIG_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
