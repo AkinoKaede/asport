@@ -112,11 +112,11 @@ security layer. The pseudocode as follows:
 token =  TLS_ExportKeyingMaterial(uuid, password)
 ```
 
-If failed to export the TLS keying material (for example, use Noise as security layer), the client SHOULD use BLAKE3-256
+If failed to export the TLS keying material (for example, use Noise as security layer), the client SHOULD use `BLAKE3-KDF-MAC`
 to hash the uuid and password, and then convert it to a 256-bit token, and the pseudocode as follows:
 
 ```pesudo
-function export_keying_material(label, context)
+function derive_and_mac(label, context)
     info = "asport key derivation"
     derived_key = BLAKE3_DeriveKey(info, context)
     mac = BLAKE3_KeyedHash(derived_key, label)
@@ -124,7 +124,7 @@ function export_keying_material(label, context)
 end function
 
 
-token = derive_and_mac(context_data, label_data)
+token = derive_and_mac(uuid, password)
 ```
 
 The server will verify the token to authenticate the user.
