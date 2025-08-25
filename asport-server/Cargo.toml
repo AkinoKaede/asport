@@ -13,7 +13,7 @@ repository = "https://github.com/AkinoKaede/asport"
 [dependencies]
 asport = { path = "../asport", version = "0.3.0" }
 asport-quinn = { path = "../asport-quinn", version = "0.3.0" }
-base64 = { version = "0.21.7", default-features = false }
+base64 = { version = "0.22.1", default-features = false }
 bimap = { version = "0.6.3", default-features = false, features = ["std"] }
 bitflags = { version = "2.9.1", default-features = false, features = ["std"] }
 bytes = { version = "1.7.1", default-features = false, features = ["std"] }
