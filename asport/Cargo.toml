@@ -22,7 +22,7 @@ futures-util = { version = "0.3.28", default-features = false, features = ["io",
 parking_lot = { version = "0.12.1", default-features = false, optional = true }
 register-count = { version = "0.1.0", default-features = false, features = ["std"], optional = true }
 thiserror = { version = "2.0.12", default-features = false }
-uuid = { version = "1.10.0", default-features = false, features = ["std"] }
+uuid = { version = "1.18.1", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 asport = { path = ".", features = ["async_marshal", "marshal", "model"] }
