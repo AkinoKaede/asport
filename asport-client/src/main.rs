@@ -1,5 +1,5 @@
 /*
-* Asport, a quick and secure reverse proxy based on QUIC for NAT traversal.
+* Asport, Asport, a quick and secure reverse tunnel based on QUIC.
 * Copyright (C) 2024 Kaede Akino
 *
 * This program is free software: you can redistribute it and/or modify

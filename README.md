@@ -1,6 +1,6 @@
 # Asport
 
-A quick and secure reverse proxy based on QUIC for NAT traversal.
+A quick and secure reverse tunnel based on QUIC.
 
 > The name is inspired by an esper ability called *Asport (遠隔射出, lit. “Remote Emission”)* from *A Certain Magical Index (とある魔術の禁書目録)*. This ability enables an esper to instantly transport matter across space.
 
