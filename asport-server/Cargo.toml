@@ -18,7 +18,7 @@ bimap = { version = "0.6.3", default-features = false, features = ["std"] }
 bitflags = { version = "2.9.1", default-features = false, features = ["std"] }
 bytes = { version = "1.7.1", default-features = false, features = ["std"] }
 clap = { version = "4.5.16", default-features = false, features = ["color", "derive", "error-context", "help", "std", "suggestions", "usage"] }
-config = { version = "0.15.14", default-features = false, features = ["async", "convert-case", "json", "json5", "ron", "toml", "yaml"] }
+config = { version = "0.15.17", default-features = false, features = ["async", "convert-case", "json", "json5", "ron", "toml", "yaml"] }
 crossbeam-utils = { version = "0.8.20", default-features = false, features = ["std"] }
 env_logger = { version = "0.11.5", default-features = false, features = ["auto-color", "humantime"] }
 humantime = { version = "2.1.0", default-features = false }
