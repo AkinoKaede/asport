@@ -32,7 +32,7 @@ rustls-native-certs = { version = "0.8.0", default-features = false }
 rustls-pemfile = { version = "2.1.2", default-features = false, features = ["std"] }
 serde = { version = "1.0.209", default-features = false, features = ["derive", "std"] }
 socket2 = { version = "0.6.0", default-features = false }
-thiserror = { version = "2.0.12", default-features = false }
+thiserror = { version = "2.0.17", default-features = false }
 tokio = { version = "1.40.0", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
 tokio-util = { version = "0.7.11", default-features = false, features = ["compat"] }
 uuid = { version = "1.18.0", default-features = false, features = ["serde", "std", "v4"] }
