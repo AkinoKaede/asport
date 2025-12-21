@@ -57,14 +57,14 @@ impl Server {
                     let mut builder = HandshakeBuilder::new(noise_cfg.pattern.as_str());
                     builder = if let Some(local_private_key) = noise_cfg.local_private_key.as_ref()
                     {
-                        builder.with_static_key(&*local_private_key)
+                        builder.with_static_key(local_private_key.as_ref())
                     } else {
                         builder
                     };
 
                     builder = if let Some(remote_public_key) = noise_cfg.remote_public_key.as_ref()
                     {
-                        builder.with_remote_public(&*remote_public_key)
+                        builder.with_remote_public(remote_public_key.as_ref())
                     } else {
                         builder
                     };
@@ -160,7 +160,7 @@ impl Server {
         Ok(Self {
             ep,
             users: Arc::new(users),
-            zero_rtt_handshake: zero_rtt_handshake,
+            zero_rtt_handshake,
             hello_timeout: cfg.handshake_timeout,
             task_negotiation_timeout: cfg.task_negotiation_timeout,
             authentication_failed_reply: cfg.authentication_failed_reply,

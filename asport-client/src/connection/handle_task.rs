@@ -76,7 +76,7 @@ impl Connection {
         log::info!("[connect] {source_addr_string}");
 
         let source_addr = match conn.addr() {
-            Address::SocketAddress(addr) => Some(addr.clone()),
+            Address::SocketAddress(addr) => Some(*addr),
             Address::None => None,
         };
 

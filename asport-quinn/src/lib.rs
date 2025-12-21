@@ -635,9 +635,9 @@ impl KeyingMaterialExporterImpl for KeyingMaterialExporter {
                 // This is a workaround for Noise handshake implementations that do not support keying material export.
 
                 let info = "asport key derivation";
-                let derived_key = blake3::derive_key(&info, context);
+                let derived_key = blake3::derive_key(info, context);
 
-                let mac = blake3::keyed_hash(&derived_key, label.as_ref());
+                let mac = blake3::keyed_hash(&derived_key, label);
                 buf.copy_from_slice(mac.as_bytes());
             }
         }

@@ -46,7 +46,7 @@ pub enum Error {
     #[error("missing security configuration for {0}")]
     MissingSecurityConfig(SecurityType),
     #[error(transparent)]
-    QuinnHyphaeCryptoError(#[from] CryptoError),
+    HyphaeCrypto(#[from] CryptoError),
 }
 
 impl Error {

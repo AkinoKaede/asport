@@ -173,7 +173,7 @@ mod default {
     }
 
     pub fn authentication_failed_reply() -> bool {
-        return true;
+        true
     }
 
     pub fn task_negotiation_timeout() -> Duration {

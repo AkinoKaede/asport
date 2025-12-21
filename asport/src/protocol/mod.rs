@@ -94,8 +94,9 @@ impl Header {
 /// Address type `None` is used in `Packet` commands that is not the first fragment of a UDP packet.
 ///
 /// The port number is encoded in 2 bytes after the Domain name / IP address.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Address {
+    #[default]
     None,
     SocketAddress(SocketAddr),
 }
@@ -153,11 +154,5 @@ impl Display for Address {
             Self::None => write!(f, "none"),
             Self::SocketAddress(addr) => write!(f, "{addr}"),
         }
-    }
-}
-
-impl Default for Address {
-    fn default() -> Self {
-        Self::None
     }
 }

@@ -47,7 +47,7 @@ mod handle_stream;
 mod handle_task;
 mod udp_session;
 
-static ENDPOINT: OnceLock<Mutex<Endpoint>> = OnceLock::new();
+static ENDPOINT: OnceLock<Endpoint> = OnceLock::new();
 static CONNECTION: AsyncOnceCell<AsyncMutex<Connection>> = AsyncOnceCell::const_new();
 static HEALTHY_CHECK: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));
 static TIMEOUT: AtomicCell<Duration> = AtomicCell::new(Duration::from_secs(0));
@@ -98,14 +98,14 @@ impl Connection {
                     let mut builder = HandshakeBuilder::new(noise_cfg.pattern.as_str());
                     builder = if let Some(local_private_key) = noise_cfg.local_private_key.as_ref()
                     {
-                        builder.with_static_key(&*local_private_key)
+                        builder.with_static_key(local_private_key.as_ref())
                     } else {
                         builder
                     };
 
                     builder = if let Some(remote_public_key) = noise_cfg.remote_public_key.as_ref()
                     {
-                        builder.with_remote_public(&*remote_public_key)
+                        builder.with_remote_public(remote_public_key.as_ref())
                     } else {
                         builder
                     };
@@ -151,11 +151,8 @@ impl Connection {
 
         config.transport_config(Arc::new(tp_cfg));
 
-        match cfg.security.type_ {
-            SecurityType::Noise => {
-                config.version(HYPHAE_H_V1_QUIC_V1_VERSION);
-            }
-            _ => (),
+        if let SecurityType::Noise = cfg.security.type_ {
+            config.version(HYPHAE_H_V1_QUIC_V1_VERSION);
         }
 
         // Try to create an IPv4 socket as the placeholder first, if it fails, try IPv6.
@@ -170,9 +167,9 @@ impl Connection {
             _ => EndpointConfig::default(),
         };
 
-        let mut ep = QuinnEndpoint::new(ep_config, None, socket, Arc::new(TokioRuntime))?;
+        let mut quinn_endpoint = QuinnEndpoint::new(ep_config, None, socket, Arc::new(TokioRuntime))?;
 
-        ep.set_default_client_config(config);
+        quinn_endpoint.set_default_client_config(config);
 
         let zero_rtt_handshake = match cfg.security.type_ {
             SecurityType::Noise => {
@@ -183,7 +180,7 @@ impl Connection {
         };
 
         let ep = Endpoint {
-            ep,
+            ep: AsyncMutex::new(quinn_endpoint),
             server: ServerAddress::new(cfg.server, server_name),
             local: cfg.local,
             uuid: cfg.uuid,
@@ -203,7 +200,7 @@ impl Connection {
         };
 
         ENDPOINT
-            .set(Mutex::new(ep))
+            .set(ep)
             .map_err(|_| "endpoint already initialized")
             .unwrap();
 
@@ -218,7 +215,6 @@ impl Connection {
             ENDPOINT
                 .get()
                 .unwrap()
-                .lock()
                 .connect()
                 .await
                 .map(AsyncMutex::new)
@@ -232,7 +228,7 @@ impl Connection {
                 .await;
 
             if conn.is_closed() {
-                let new_conn = ENDPOINT.get().unwrap().lock().connect().await?;
+                let new_conn = ENDPOINT.get().unwrap().connect().await?;
                 *conn = new_conn;
             }
 
@@ -396,7 +392,7 @@ impl Connection {
 }
 
 struct Endpoint {
-    ep: QuinnEndpoint,
+    ep: AsyncMutex<QuinnEndpoint>,
     server: ServerAddress,
     local: Address,
     uuid: Uuid,
@@ -416,47 +412,11 @@ struct Endpoint {
 }
 
 impl Endpoint {
-    async fn connect(&mut self) -> Result<Connection, Error> {
+    async fn connect(&self) -> Result<Connection, Error> {
         let mut last_err = None;
 
         for addr in self.server.resolve().await? {
-            let connect_to = async {
-                let match_ipv4 =
-                    addr.is_ipv4() && self.ep.local_addr().map_or(false, |addr| addr.is_ipv4());
-                let match_ipv6 =
-                    addr.is_ipv6() && self.ep.local_addr().map_or(false, |addr| addr.is_ipv6());
-
-                if !match_ipv4 && !match_ipv6 {
-                    let bind_addr = if addr.is_ipv4() {
-                        SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))
-                    } else {
-                        SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0))
-                    };
-
-                    self.ep
-                        .rebind(UdpSocket::bind(bind_addr).map_err(|err| {
-                            Error::Socket("failed to create endpoint UDP socket", err)
-                        })?)
-                        .map_err(|err| {
-                            Error::Socket("failed to rebind endpoint UDP socket", err)
-                        })?;
-                }
-
-                let conn = self.ep.connect(addr, self.server.server_name())?;
-
-                let (conn, zero_rtt_accepted) = if self.zero_rtt_handshake {
-                    match conn.into_0rtt() {
-                        Ok((conn, zero_rtt_accepted)) => (conn, Some(zero_rtt_accepted)),
-                        Err(conn) => (conn.await?, None),
-                    }
-                } else {
-                    (conn.await?, None)
-                };
-
-                Ok((conn, zero_rtt_accepted))
-            };
-
-            match connect_to.await {
+            match self.try_connect(addr).await {
                 Ok((conn, zero_rtt_accepted)) => {
                     return Ok(Connection::new(
                         conn,
@@ -482,6 +442,44 @@ impl Endpoint {
         }
 
         Err(last_err.unwrap_or(Error::DnsResolve))
+    }
+
+    async fn try_connect(
+        &self,
+        addr: SocketAddr,
+    ) -> Result<(QuinnConnection, Option<ZeroRttAccepted>), Error> {
+        let connecting = {
+            let ep = self.ep.lock().await;
+
+            let match_ipv4 = addr.is_ipv4() && ep.local_addr().is_ok_and(|local| local.is_ipv4());
+            let match_ipv6 = addr.is_ipv6() && ep.local_addr().is_ok_and(|local| local.is_ipv6());
+
+            if !match_ipv4 && !match_ipv6 {
+                let bind_addr = if addr.is_ipv4() {
+                    SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))
+                } else {
+                    SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0))
+                };
+
+                ep.rebind(UdpSocket::bind(bind_addr).map_err(|err| {
+                    Error::Socket("failed to create endpoint UDP socket", err)
+                })?)
+                .map_err(|err| Error::Socket("failed to rebind endpoint UDP socket", err))?;
+            }
+
+            ep.connect(addr, self.server.server_name())
+        };
+
+        let connecting = connecting?;
+
+        if self.zero_rtt_handshake {
+            match connecting.into_0rtt() {
+                Ok((conn, zero_rtt_accepted)) => Ok((conn, Some(zero_rtt_accepted))),
+                Err(conn) => Ok((conn.await?, None)),
+            }
+        } else {
+            Ok((connecting.await?, None))
+        }
     }
 }
 

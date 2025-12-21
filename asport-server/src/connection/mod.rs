@@ -212,7 +212,7 @@ impl Connection {
             .filter(|port| range.contains(port))
             .collect();
 
-        let network = utils::merge_network(user.allow_network().clone(), network)?;
+        let network = utils::merge_network(*user.allow_network(), network)?;
 
         self.bind(user.listen_ip(), ports, user.only_v6(), &network)
             .await

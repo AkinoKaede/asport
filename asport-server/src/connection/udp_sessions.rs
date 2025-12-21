@@ -79,7 +79,7 @@ impl UdpSessions {
                     None => {
                         let assoc_id = next_assoc_id.fetch_add(1, Ordering::Relaxed);
 
-                        if let Some(_) = lock.remove_by_left(&assoc_id) {
+                        if lock.remove_by_left(&assoc_id).is_some() {
                             dissociate_before_forward = true;
                         }
 

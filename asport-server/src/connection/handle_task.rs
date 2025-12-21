@@ -225,7 +225,6 @@ impl Connection {
                     user = self.auth,
                     err = err,
                 );
-                return;
             }
         };
     }

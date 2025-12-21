@@ -73,7 +73,10 @@ impl Connection {
         };
 
         let res = match pre_process.await {
-            Ok(Task::ServerHello(server_hello)) => Ok(self.handle_server_hello(server_hello).await),
+            Ok(Task::ServerHello(server_hello)) => {
+                self.handle_server_hello(server_hello).await;
+                Ok(())
+            }
             Ok(Task::Packet(pkt)) => {
                 if self.network.udp() {
                     match self.udp_forward_mode {
@@ -87,7 +90,10 @@ impl Connection {
                     Err(Error::NetworkDenied(Network::Udp))
                 }
             }
-            Ok(Task::Dissociate(assoc_id)) => Ok(self.handle_dissociate(assoc_id).await),
+            Ok(Task::Dissociate(assoc_id)) => {
+                self.handle_dissociate(assoc_id).await;
+                Ok(())
+            }
             Ok(_) => unreachable!(),
             Err(err) => Err(err),
         };

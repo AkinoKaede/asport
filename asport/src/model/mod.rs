@@ -176,6 +176,15 @@ where
     }
 }
 
+impl<B> Default for Connection<B>
+where
+    B: AsRef<[u8]>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<B> Debug for Connection<B>
 where
     B: AsRef<[u8]> + Debug,

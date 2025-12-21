@@ -1,7 +1,7 @@
 use std::{
-    cell::LazyCell,
     collections::BTreeSet,
     net::{IpAddr, SocketAddr},
+    sync::LazyLock,
 };
 
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
@@ -17,7 +17,7 @@ use crate::{
 
 use super::{udp_sessions::UdpSessions, Connection};
 
-const EPHEMERAL_PORTS: LazyCell<BTreeSet<u16>> = LazyCell::new(|| ephemeral_port_range().collect());
+static EPHEMERAL_PORTS: LazyLock<BTreeSet<u16>> = LazyLock::new(|| ephemeral_port_range().collect());
 
 impl Connection {
     async fn bind_tcp(

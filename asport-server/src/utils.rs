@@ -27,12 +27,11 @@ use asport::Flags;
 use crate::error::Error;
 
 pub fn load_certs<P: AsRef<Path>>(path: P) -> Result<Vec<CertificateDer<'static>>, Error> {
-    let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
+    let mut file = BufReader::new(File::open(&path).map_err(Error::Io)?);
     let mut certs = Vec::new();
 
     let mut certs_bytes = Vec::new();
-    file.read_to_end(&mut certs_bytes)
-        .map_err(|e| Error::Io(e))?;
+    file.read_to_end(&mut certs_bytes).map_err(Error::Io)?;
 
     // Try to read PEM format first
     match parse_pem_certs(certs_bytes.clone()) {
@@ -64,10 +63,10 @@ pub fn parse_pem_certs(pem_text: Vec<u8>) -> Result<Vec<CertificateDer<'static>>
 }
 
 pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, Error> {
-    let mut file = BufReader::new(File::open(&path).map_err(|e| Error::Io(e))?);
+    let mut file = BufReader::new(File::open(&path).map_err(Error::Io)?);
     let mut priv_key: Option<PrivateKeyDer> = None;
     let mut key_bytes = Vec::new();
-    file.read_to_end(&mut key_bytes).map_err(|e| Error::Io(e))?;
+    file.read_to_end(&mut key_bytes).map_err(Error::Io)?;
     // Try to read PEM format first
     match parse_pem_priv_key(key_bytes.clone()) {
         Ok(parsed_key) => {
@@ -77,7 +76,7 @@ pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, 
             // If PEM parsing fails, try to read DER format
             if priv_key.is_none() {
                 priv_key = Some(
-                    PrivateKeyDer::try_from(key_bytes).map_err(|e| Error::InvalidPrivateKey(e))?,
+                    PrivateKeyDer::try_from(key_bytes).map_err(Error::InvalidPrivateKey)?,
                 );
             }
         }
@@ -85,9 +84,7 @@ pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, 
 
     match priv_key {
         Some(key) => Ok(key),
-        None => Err(Error::InvalidPrivateKey(
-            "No valid private key found".into(),
-        )),
+        None => Err(Error::InvalidPrivateKey("No valid private key found")),
     }
 }
 
@@ -106,9 +103,7 @@ pub fn parse_pem_priv_key(pem_text: Vec<u8>) -> Result<PrivateKeyDer<'static>, E
 
     match priv_key {
         Some(key) => Ok(key),
-        None => Err(Error::InvalidPrivateKey(
-            "No valid private key found".into(),
-        )),
+        None => Err(Error::InvalidPrivateKey("No valid private key found")),
     }
 }
 
