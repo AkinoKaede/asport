@@ -1,14 +1,14 @@
 use std::{
-    fmt::Display,
     ops::RangeInclusive,
     path::PathBuf,
-    str::FromStr,
     sync::{Arc, OnceLock},
     time::Duration,
 };
 
-use base64::{engine::general_purpose::STANDARD, Engine};
-use humantime::Duration as HumanDuration;
+use asport_common::config::{
+    serde::{deserialize_alpn, deserialize_duration, deserialize_from_str},
+    SecurityNoiseConfig,
+};
 use log::LevelFilter;
 use rustls::RootCertStore;
 use serde::{de::Error as DeError, Deserialize, Deserializer};
@@ -176,17 +176,6 @@ pub struct SecurityTlsConfig {
     pub alpn: Vec<Vec<u8>>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SecurityNoiseConfig {
-    #[serde(default = "default::security::noise::pattern")]
-    pub pattern: String,
-    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
-    pub local_private_key: Option<Arc<[u8]>>,
-    #[serde(default, deserialize_with = "deserialize_from_base64_opt")]
-    pub remote_public_key: Option<Arc<[u8]>>,
-}
-
 impl Config {
     pub fn build(path: PathBuf) -> Result<Self, config::ConfigError> {
         let base_path = path.parent();
@@ -271,11 +260,6 @@ mod default {
             }
         }
 
-        pub mod noise {
-            pub fn pattern() -> String {
-                "Noise_NK_25519_ChaChaPoly_BLAKE2s".to_string()
-            }
-        }
     }
 
     pub fn network() -> Network {
@@ -347,64 +331,12 @@ mod default {
     }
 }
 
-pub fn deserialize_from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: FromStr,
-    <T as FromStr>::Err: Display,
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    T::from_str(&s).map_err(DeError::custom)
-}
-
-#[allow(dead_code)]
-pub fn deserialize_from_base64<'de, D>(deserializer: D) -> Result<Arc<[u8]>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
-    Ok(Arc::from(bytes.into_boxed_slice()))
-}
-
-pub fn deserialize_from_base64_opt<'de, D>(deserializer: D) -> Result<Option<Arc<[u8]>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        let bytes = STANDARD.decode(&s).map_err(DeError::custom)?;
-        Ok(Some(Arc::from(bytes.into_boxed_slice())))
-    }
-}
-
 pub fn deserialize_password<'de, D>(deserializer: D) -> Result<Arc<[u8]>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     Ok(Arc::from(s.into_bytes().into_boxed_slice()))
-}
-
-pub fn deserialize_alpn<'de, D>(deserializer: D) -> Result<Vec<Vec<u8>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = Vec::<String>::deserialize(deserializer)?;
-    Ok(s.into_iter().map(|alpn| alpn.into_bytes()).collect())
-}
-
-pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-
-    s.parse::<HumanDuration>()
-        .map(|d| *d)
-        .map_err(DeError::custom)
 }
 
 pub fn deserialize_expected_port_range<'de, D>(

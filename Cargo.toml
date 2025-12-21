@@ -1,3 +1,9 @@
 [workspace]
-members = [ "asport", "asport-client", "asport-quinn","asport-server" ]
+members = [
+	"asport",
+	"asport-client",
+	"asport-common",
+	"asport-quinn",
+	"asport-server",
+]
 resolver = "2"

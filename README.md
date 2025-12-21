@@ -60,6 +60,7 @@ This repository contains the following crates:
   marshalling.
 - **[asport-quinn](./asport-quinn)** - Library. A wrapper around [quinn](https://github.com/quinn-rs/quinn) to provide
   functions of ASPORT.
+- **[asport-common](./asport-common)** - Library. Shared utilities (config parsing, CLI helpers, Noise/TLS helpers) reused by the client and server.
 - **[asport-server](./asport-server)** - Binary. A simple ASPORT server implementation as a reference.
 - **[asport-client](./asport-client)** - Binary. A simple ASPORT client implementation as a reference.
 

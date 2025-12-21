@@ -1,0 +1,19 @@
+[package]
+name = "asport-common"
+version = "0.3.0"
+authors = ["Kaede Akino <i@akinokae.de>"]
+description = "Shared utilities leveraged by asport client and server."
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/AkinoKaede/asport"
+
+[dependencies]
+base64 = { version = "0.21.7", default-features = false }
+humantime = { version = "2.1.0", default-features = false }
+serde = { version = "1.0.209", default-features = false, features = ["derive", "std"] }
+quinn-hyphae = { version = "0.1.0-beta.0", default-features = false, features = ["rustcrypto", "helper"] }
+rand_core = { version = "0.6.4", default-features = false }
+uuid = { version = "1.18.0", default-features = false, features = ["serde", "std", "v4"] }
+
+[target.'cfg(unix)'.dependencies]
+xdg = { version = "3.0.0", default-features = false }

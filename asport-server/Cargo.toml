@@ -13,7 +13,7 @@ repository = "https://github.com/AkinoKaede/asport"
 [dependencies]
 asport = { path = "../asport", version = "0.3.0" }
 asport-quinn = { path = "../asport-quinn", version = "0.3.0" }
-base64 = { version = "0.21.7", default-features = false }
+asport-common = { path = "../asport-common", version = "0.3.0" }
 bimap = { version = "0.6.3", default-features = false, features = ["std"] }
 bitflags = { version = "2.9.1", default-features = false, features = ["std"] }
 bytes = { version = "1.7.1", default-features = false, features = ["std"] }
@@ -24,7 +24,6 @@ env_logger = { version = "0.11.5", default-features = false, features = ["auto-c
 humantime = { version = "2.1.0", default-features = false }
 log = { version = "0.4.22", default-features = false, features = ["serde", "std"] }
 parking_lot = { version = "0.12.3", default-features = false, features = ["send_guard"] }
-rand_core = { version = "0.6.4", default-features = false }
 quinn = { version = "0.11.4", default-features = false, features = ["futures-io", "runtime-tokio", "rustls"] }
 quinn-hyphae = { version = "0.1.0-beta.0", default-features = false, features = ["rustcrypto", "helper"] }
 register-count = { version = "0.1.0", default-features = false, features = ["std"] }
@@ -39,9 +38,6 @@ uuid = { version = "1.10.0", default-features = false, features = ["serde", "std
 
 [dev-dependencies]
 serde_json = { version = "1.0.127", default-features = false, features = ["std"] }
-
-[target.'cfg(unix)'.dependencies]
-xdg = { version = "3.0.0", default-features = false }
 
 [target.'cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "linux", target_os = "android"))'.dependencies]
 sysctl = { version = "0.6.0", default-features = false }

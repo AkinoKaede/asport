@@ -13,7 +13,7 @@ repository = "https://github.com/AkinoKaede/asport"
 [dependencies]
 asport = { path = "../asport", version = "0.3.0" }
 asport-quinn = { path = "../asport-quinn", version = "0.3.0" }
-base64 = { version = "0.21.7", default-features = false }
+asport-common = { path = "../asport-common", version = "0.3.0" }
 bytes = { version = "1.7.1", default-features = false, features = ["std"] }
 clap = { version = "4.5.16", default-features = false, features = ["color", "derive", "error-context", "help", "std", "suggestions", "usage"] }
 config = { version = "0.15.14", default-features = false, features = ["async", "convert-case", "json", "json5", "ron", "toml", "yaml"] }
@@ -23,7 +23,6 @@ humantime = { version = "2.1.0", default-features = false }
 log = { version = "0.4.22", default-features = false, features = ["serde", "std"] }
 parking_lot = { version = "0.12.3", default-features = false, features = ["send_guard"] }
 ppp = { version = "2.2.0", default-features = false }
-rand_core = { version = "0.6.4", default-features = false }
 quinn = { version = "0.11.4", default-features = false, features = ["futures-io", "runtime-tokio", "rustls"] }
 quinn-hyphae = { version = "0.1.0-beta.0", default-features = false, features = ["rustcrypto", "helper"] }
 register-count = { version = "0.1.0", default-features = false, features = ["std"] }
@@ -41,4 +40,4 @@ uuid = { version = "1.18.0", default-features = false, features = ["serde", "std
 serde_json = { version = "1.0.127", default-features = false, features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
-xdg = { version = "3.0.0", default-features = false }
+

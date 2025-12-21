@@ -139,8 +139,8 @@ name = "asport-client"
 version = "0.3.0"
 dependencies = [
  "asport",
+ "asport-common",
  "asport-quinn",
- "base64",
  "bytes",
  "clap",
  "config",
@@ -152,7 +152,6 @@ dependencies = [
  "ppp",
  "quinn",
  "quinn-hyphae",
- "rand_core 0.6.4",
  "register-count",
  "rustls",
  "rustls-native-certs",
@@ -163,6 +162,18 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
+ "uuid",
+]
+
+[[package]]
+name = "asport-common"
+version = "0.3.0"
+dependencies = [
+ "base64",
+ "humantime",
+ "quinn-hyphae",
+ "rand_core 0.6.4",
+ "serde",
  "uuid",
  "xdg",
 ]
@@ -185,8 +196,8 @@ name = "asport-server"
 version = "0.3.0"
 dependencies = [
  "asport",
+ "asport-common",
  "asport-quinn",
- "base64",
  "bimap",
  "bitflags",
  "bytes",
@@ -199,7 +210,6 @@ dependencies = [
  "parking_lot",
  "quinn",
  "quinn-hyphae",
- "rand_core 0.6.4",
  "register-count",
  "rustls",
  "rustls-pemfile",
@@ -211,7 +221,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "uuid",
- "xdg",
 ]
 
 [[package]]
