@@ -34,7 +34,7 @@ socket2 = { version = "0.6.0", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
 tokio = { version = "1.40.0", default-features = false, features = ["io-util", "macros", "net", "parking_lot", "rt-multi-thread", "time"] }
 tokio-util = { version = "0.7.11", default-features = false, features = ["compat"] }
-uuid = { version = "1.10.0", default-features = false, features = ["serde", "std", "v4"] }
+uuid = { version = "1.18.1", default-features = false, features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
 serde_json = { version = "1.0.127", default-features = false, features = ["std"] }
