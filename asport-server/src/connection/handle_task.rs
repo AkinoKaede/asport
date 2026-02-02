@@ -101,7 +101,17 @@ impl Connection {
                 dst_addr = addr,
             );
 
-            let sessions = match self.udp_sessions.lock().await.clone() {
+            let socket_addr = match addr {
+                Address::None => {
+                    return Err(Error::from(IoError::new(ErrorKind::NotFound, "no address")));
+                }
+                Address::SocketAddress(addr) => addr,
+            };
+
+            // Validate destination address and send packet in one step
+            // This avoids cloning the sessions object multiple times
+            let udp_sessions_lock = self.udp_sessions.lock().await;
+            let sessions = match udp_sessions_lock.as_ref() {
                 Some(sessions) => sessions,
                 None => {
                     return Err(Error::from(IoError::new(
@@ -111,31 +121,17 @@ impl Connection {
                 }
             };
 
-            let socket_addr = match addr {
-                Address::None => {
-                    return Err(Error::from(IoError::new(ErrorKind::NotFound, "no address")));
-                }
-                Address::SocketAddress(addr) => addr,
-            };
-
             // Validate destination address
             // Because client can send packet with any address, we need to validate it.
             // If not, it can be used for proxy.
-            if !self
-                .udp_sessions
-                .lock()
-                .await
-                .clone()
-                .unwrap()
-                .validate(assoc_id, socket_addr)
-            {
-                // unwrap() is safe because of it's checked.
+            if !sessions.validate(assoc_id, socket_addr) {
                 return Err(Error::from(IoError::new(
                     ErrorKind::InvalidInput,
                     "destination address is not valid",
                 )));
             }
 
+            // Send packet without additional cloning
             sessions.send_to(pkt, socket_addr).await
         };
 
