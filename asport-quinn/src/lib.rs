@@ -628,19 +628,7 @@ struct KeyingMaterialExporter(QuinnConnection);
 impl KeyingMaterialExporterImpl for KeyingMaterialExporter {
     fn export_keying_material(&self, label: &[u8], context: &[u8]) -> [u8; 32] {
         let mut buf = [0; 32];
-        match self.0.export_keying_material(&mut buf, label, context) {
-            Ok(_) => {}
-            Err(_) => {
-                // Fallback to BLAKE3 key derivation if export fails
-                // This is a workaround for Noise handshake implementations that do not support keying material export.
-
-                let info = "asport key derivation";
-                let derived_key = blake3::derive_key(info, context);
-
-                let mac = blake3::keyed_hash(&derived_key, label);
-                buf.copy_from_slice(mac.as_bytes());
-            }
-        }
+        self.0.export_keying_material(&mut buf, label, context).unwrap();
         buf
     }
 }

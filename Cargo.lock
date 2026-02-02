@@ -751,8 +751,7 @@ checksum = "9b112acc8b3adf4b107a8ec20977da0273a8c386765a3ec0229bd500a1443f9f"
 [[package]]
 name = "hyphae-handshake"
 version = "0.1.0-beta.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0ad8760c01149bdcb0fabd55f00c301dbf3ece7fb2611fefca9705d24eee455"
+source = "git+https://github.com/AkinoKaede/hyphae-handshake?branch=0.1.0-beta.0-ekm#ddec5578e68c5a15de9da03b2b3350f80f53232c"
 dependencies = [
  "aes-gcm",
  "blake2",
@@ -1105,8 +1104,7 @@ dependencies = [
 [[package]]
 name = "quinn-hyphae"
 version = "0.1.0-beta.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3512590a2ccb376fc6acfb4463f351ee55fdcfb193c79c37b30590409e76c055"
+source = "git+https://github.com/AkinoKaede/hyphae-handshake?branch=0.1.0-beta.0-ekm#ddec5578e68c5a15de9da03b2b3350f80f53232c"
 dependencies = [
  "base16ct",
  "base64ct",
