@@ -31,6 +31,7 @@ pub struct Server {
     task_negotiation_timeout: Duration,
     authentication_failed_reply: bool,
     max_packet_size: usize,
+    udp_session_timeout: Duration,
 }
 
 impl Server {
@@ -165,6 +166,7 @@ impl Server {
             task_negotiation_timeout: cfg.task_negotiation_timeout,
             authentication_failed_reply: cfg.authentication_failed_reply,
             max_packet_size: cfg.max_packet_size,
+            udp_session_timeout: cfg.udp_session_timeout,
         })
     }
 
@@ -186,6 +188,7 @@ impl Server {
                         self.task_negotiation_timeout,
                         self.authentication_failed_reply,
                         self.max_packet_size,
+                        self.udp_session_timeout,
                     ));
                 }
                 Err(err) => {

@@ -42,6 +42,7 @@ pub struct Connection {
     task_negotiation_timeout: Duration,
     authentication_failed_reply: bool,
     max_packet_size: usize,
+    udp_session_timeout: Duration,
 
     remote_uni_stream_cnt: Counter,
     remote_bi_stream_cnt: Counter,
@@ -56,6 +57,7 @@ impl Connection {
         task_negotiation_timeout: Duration,
         authentication_failed_reply: bool,
         max_packet_size: usize,
+        udp_session_timeout: Duration,
     ) -> Self {
         Self {
             inner: conn.clone(),
@@ -67,6 +69,7 @@ impl Connection {
             task_negotiation_timeout,
             authentication_failed_reply,
             max_packet_size,
+            udp_session_timeout,
             remote_uni_stream_cnt: Counter::new(),
             remote_bi_stream_cnt: Counter::new(),
             max_concurrent_uni_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
@@ -82,6 +85,7 @@ impl Connection {
         task_negotiation_timeout: Duration,
         authentication_failed_reply: bool,
         max_packet_size: usize,
+        udp_session_timeout: Duration,
     ) {
         let addr = conn.remote_address();
 
@@ -101,6 +105,7 @@ impl Connection {
                 task_negotiation_timeout,
                 authentication_failed_reply,
                 max_packet_size,
+                udp_session_timeout,
             ))
         };
 

@@ -64,6 +64,12 @@ pub struct Config {
     #[serde(default = "default::max_packet_size")]
     pub max_packet_size: usize,
 
+    #[serde(
+        default = "default::udp_session_timeout",
+        deserialize_with = "deserialize_duration"
+    )]
+    pub udp_session_timeout: Duration,
+
     #[serde(default = "default::send_window")]
     pub send_window: u64,
 
@@ -186,6 +192,10 @@ mod default {
 
     pub fn max_packet_size() -> usize {
         1350
+    }
+
+    pub fn udp_session_timeout() -> Duration {
+        Duration::from_mins(5)
     }
 
     pub fn send_window() -> u64 {

@@ -46,6 +46,13 @@ max_idle_time = "10s"
 # common value for Ethernet jumbo frame.
 max_packet_size = 1350
 
+# UDP session timeout.
+# Default: "5m"
+# Note: Inactive UDP sessions will be automatically cleaned up after this timeout. This helps prevent memory leaks
+# and ensures proper resource management. The session timeout should be balanced between performance and resource usage.
+# Shorter timeouts free up resources faster but may cause more frequent reconnections for intermittent connections.
+udp_session_timeout = "5m"
+
 # Send window size.
 # Default: 16_777_216
 send_window = 16_777_216

@@ -118,10 +118,11 @@ impl Connection {
                 (Some(Ok(tcp_listener)), Some(Ok(udp_socket))) => {
                     self.clone().handle_tcp_listener(tcp_listener).await;
                     let mut udp_sessions = self.udp_sessions.lock().await;
-                    *udp_sessions = Some(UdpSessions::new(
+                    *udp_sessions = Some(UdpSessions::with_timeout(
                         self.clone(),
                         udp_socket,
                         self.max_packet_size,
+                        self.udp_session_timeout,
                     ));
 
                     return Ok(port);
@@ -136,10 +137,11 @@ impl Connection {
                 (None, Some(Ok(udp_socket))) => {
                     let port = udp_socket.local_addr().unwrap().port(); // Get actual port when port is 0
                     let mut udp_sessions = self.udp_sessions.lock().await;
-                    *udp_sessions = Some(UdpSessions::new(
+                    *udp_sessions = Some(UdpSessions::with_timeout(
                         self.clone(),
                         udp_socket,
                         self.max_packet_size,
+                        self.udp_session_timeout,
                     ));
 
                     return Ok(port);
