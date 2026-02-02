@@ -37,12 +37,13 @@ use crate::{
     utils::{Address, CongestionControl, Network, ProxyProtocol, ServerAddress, UdpForwardMode},
 };
 
-use self::{authenticated::Authenticated, udp_session::UdpSession};
+use self::{authenticated::Authenticated, buffer_pool::BufferPool, udp_session::UdpSession};
 use crate::utils::SecurityType;
 use quinn_hyphae::helper::hyphae_endpoint_config;
 use quinn_hyphae::{HandshakeBuilder, RustCryptoBackend, HYPHAE_H_V1_QUIC_V1_VERSION};
 
 mod authenticated;
+mod buffer_pool;
 mod handle_stream;
 mod handle_task;
 mod udp_session;
@@ -75,6 +76,7 @@ pub struct Connection {
     remote_bi_stream_cnt: Counter,
     max_concurrent_uni_streams: Arc<AtomicU32>,
     max_concurrent_bi_streams: Arc<AtomicU32>,
+    buffer_pool: BufferPool,
 }
 
 impl Connection {
@@ -292,6 +294,7 @@ impl Connection {
             remote_bi_stream_cnt: Counter::new(),
             max_concurrent_uni_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
             max_concurrent_bi_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
+            buffer_pool: BufferPool::new(max_packet_size, 32), // Pool size of 32 buffers
         };
 
         tokio::spawn(conn.clone().init(

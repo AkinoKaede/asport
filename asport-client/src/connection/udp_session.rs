@@ -22,7 +22,7 @@ use asport::Address;
 use crate::error::Error;
 use crate::utils::{union_proxy_protocol_addresses, ProxyProtocol};
 
-use super::Connection;
+use super::{buffer_pool::BufferPool, Connection};
 
 #[derive(Clone)]
 pub struct UdpSession(Arc<UdpSessionInner>);
@@ -38,7 +38,7 @@ struct UdpSessionInner {
     update: MpscSender<()>,
     close: Mutex<Option<OneshotSender<()>>>,
     // Buffer pool for reducing allocations
-    recv_buffer: Mutex<Vec<u8>>,
+    buffer_pool: BufferPool,
     // Track update failures to avoid blocking
     update_failed: std::sync::atomic::AtomicBool,
 }
@@ -83,7 +83,7 @@ impl UdpSession {
         };
 
         let session = Self(Arc::new(UdpSessionInner {
-            conn,
+            conn: conn.clone(),
             assoc_id,
             socket,
             max_pkt_size,
@@ -92,7 +92,7 @@ impl UdpSession {
             remote: remote_socket_address,
             close: Mutex::new(Some(close_tx)),
             update: update_tx,
-            recv_buffer: Mutex::new(Vec::with_capacity(max_pkt_size)),
+            buffer_pool: conn.buffer_pool.clone(),
             update_failed: std::sync::atomic::AtomicBool::new(false),
         }));
 
@@ -231,12 +231,12 @@ impl UdpSession {
     }
 
     async fn recv_from(&self) -> Result<(Bytes, SocketAddr), IoError> {
-        let mut buffer = self.0.recv_buffer.lock();
+        // Get buffer from pool
+        let mut buffer = self.0.buffer_pool.get();
 
         // Ensure buffer has adequate capacity
-        let current_capacity = buffer.capacity();
-        if current_capacity < self.0.max_pkt_size {
-            buffer.reserve(self.0.max_pkt_size - current_capacity);
+        if buffer.capacity() < self.0.max_pkt_size {
+            buffer.reserve(self.0.max_pkt_size - buffer.capacity());
         }
 
         // Resize buffer to max capacity for receiving
@@ -247,11 +247,8 @@ impl UdpSession {
         // Create Bytes from the received data
         let data = Bytes::copy_from_slice(&buffer[..n]);
 
-        // Keep buffer allocated for next use
-        buffer.clear();
-
-        // Release the lock before calling update
-        drop(buffer);
+        // Return buffer to pool
+        self.0.buffer_pool.put(buffer);
 
         self.update().await;
 
