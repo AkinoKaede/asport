@@ -74,13 +74,12 @@ This repository contains the following crates:
 - [ ] REST/RPC interface for `asport-server`.
 - [ ] Web status monitor for `asport-server`.
 - [ ] Web console for `asport-server`.
-- [ ] Full-featured implementation of ASPORT in Go.
 
 ## Credits
 
-This project is highly inspired by [TUIC](https://github.com/EAimTY/tuic). Many ideas and code snippets are borrowed
+This project is highly inspired by [TUIC](https://github.com/tuic-protocol/tuic). Many ideas and code snippets are borrowed
 from
-[TUIC](https://github.com/EAimTY/tuic). Thanks to the authors and contributors of TUIC for providing such a great
+[TUIC](https://github.com/tuic-protocol/tuic). Thanks to the authors and contributors of TUIC for providing such a great
 project.
 
 ## License
