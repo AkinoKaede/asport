@@ -262,7 +262,7 @@ impl UdpSession {
             return;
         }
 
-        if let Err(_) = self.0.update.try_send(()) {
+        if self.0.update.try_send(()).is_err() {
             // Mark update as failed and log once
             if !self.0.update_failed.swap(true, Ordering::Relaxed) {
                 log::debug!(

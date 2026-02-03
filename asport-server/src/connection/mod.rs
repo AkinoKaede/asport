@@ -80,6 +80,7 @@ impl Connection {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn handle(
         conn: Connecting,
         users: Arc<HashMap<Uuid, User>>,

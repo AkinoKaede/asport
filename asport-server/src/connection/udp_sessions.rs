@@ -268,9 +268,6 @@ impl UdpSessions {
                 auth = self.0.conn.auth,
             );
 
-            let mut addr_map_lock = self.0.assoc_id_addr_map.lock();
-            let mut activity_lock = self.0.session_last_activity.lock();
-
             for assoc_id in expired_assoc_ids {
                 // Send dissociate command to client
                 if let Err(err) = self.0.conn.dissociate(assoc_id).await {
@@ -282,9 +279,13 @@ impl UdpSessions {
                     );
                 }
 
-                // Remove from internal maps
-                addr_map_lock.remove_by_left(&assoc_id);
-                activity_lock.remove(&assoc_id);
+                // Remove from internal maps after awaiting
+                {
+                    let mut addr_map_lock = self.0.assoc_id_addr_map.lock();
+                    let mut activity_lock = self.0.session_last_activity.lock();
+                    addr_map_lock.remove_by_left(&assoc_id);
+                    activity_lock.remove(&assoc_id);
+                }
             }
         }
     }
