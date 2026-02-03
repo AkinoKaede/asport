@@ -17,7 +17,8 @@ use crate::{
 
 use super::{udp_sessions::UdpSessions, Connection};
 
-static EPHEMERAL_PORTS: LazyLock<BTreeSet<u16>> = LazyLock::new(|| ephemeral_port_range().collect());
+static EPHEMERAL_PORTS: LazyLock<BTreeSet<u16>> =
+    LazyLock::new(|| ephemeral_port_range().collect());
 
 impl Connection {
     async fn bind_tcp(

@@ -108,7 +108,7 @@ impl UdpSession {
                     Ok(res) => {
                         consecutive_errors = 0; // Reset error count on success
                         res
-                    },
+                    }
                     Err(err) => {
                         consecutive_errors += 1;
                         log::warn!(
@@ -123,7 +123,8 @@ impl UdpSession {
                         }
 
                         // Exponential backoff for errors
-                        let backoff_ms = std::cmp::min(100 * (1 << consecutive_errors.min(6)), 5000);
+                        let backoff_ms =
+                            std::cmp::min(100 * (1 << consecutive_errors.min(6)), 5000);
                         time::sleep(Duration::from_millis(backoff_ms as u64)).await;
                         continue;
                     }

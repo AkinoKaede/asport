@@ -1,11 +1,11 @@
 use std::{
+    collections::HashMap,
     io::Error as IoError,
     net::{IpAddr, SocketAddr},
     sync::{
         atomic::{AtomicU16, Ordering},
         Arc,
     },
-    collections::HashMap,
     time::{Duration, Instant},
 };
 
@@ -42,7 +42,13 @@ struct UdpSessionsInner {
 }
 
 impl UdpSessions {
-    pub fn with_timeout(conn: Connection, socket: UdpSocket, max_pkt_size: usize, buffer_pool_size: usize, session_timeout: Duration) -> Self {
+    pub fn with_timeout(
+        conn: Connection,
+        socket: UdpSocket,
+        max_pkt_size: usize,
+        buffer_pool_size: usize,
+        session_timeout: Duration,
+    ) -> Self {
         let (tx, rx) = oneshot::channel();
         let assoc_id_addr_map = Arc::new(Mutex::new(bimap::BiMap::new()));
         let session_last_activity = Arc::new(Mutex::new(HashMap::new()));
@@ -93,9 +99,11 @@ impl UdpSessions {
                     Some(assoc_id) => {
                         let assoc_id = *assoc_id;
                         // Update last activity time for existing session
-                        session_last_activity_listening.lock().insert(assoc_id, Instant::now());
+                        session_last_activity_listening
+                            .lock()
+                            .insert(assoc_id, Instant::now());
                         assoc_id
-                    },
+                    }
                     None => {
                         // Find a free association ID with collision detection
                         let mut attempts = 0;
@@ -118,7 +126,8 @@ impl UdpSessions {
                         }
 
                         if attempts == u16::MAX {
-                            log::error!("[{id:#010x}] [{addr}] [{auth}] No available association IDs",
+                            log::error!(
+                                "[{id:#010x}] [{addr}] [{auth}] No available association IDs",
                                 id = session_listening.0.conn.id(),
                                 addr = session_listening.0.conn.inner.remote_address(),
                                 auth = session_listening.0.conn.auth,
@@ -132,7 +141,9 @@ impl UdpSessions {
                         }
 
                         // Record activity time for new session
-                        session_last_activity_listening.lock().insert(assoc_id, Instant::now());
+                        session_last_activity_listening
+                            .lock()
+                            .insert(assoc_id, Instant::now());
 
                         assoc_id
                     }
@@ -158,8 +169,10 @@ impl UdpSessions {
                 gc_interval.tick().await;
                 if let Err(err) = tokio::time::timeout(
                     TokioDuration::from_secs(30),
-                    session_gc.cleanup_expired_sessions()
-                ).await {
+                    session_gc.cleanup_expired_sessions(),
+                )
+                .await
+                {
                     error_count += 1;
                     log::warn!(
                         "[{id:#010x}] [{addr}] [{auth}] GC task timeout or error (count: {error_count}): {err}",
@@ -294,4 +307,3 @@ impl UdpSessions {
         let _ = self.0.close.lock().take().unwrap().send(());
     }
 }
-

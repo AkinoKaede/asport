@@ -38,8 +38,8 @@ use crate::{
 };
 
 use self::{authenticated::Authenticated, udp_session::UdpSession};
-use asport_common::buffer_pool::BufferPool;
 use crate::utils::SecurityType;
+use asport_common::buffer_pool::BufferPool;
 use quinn_hyphae::helper::hyphae_endpoint_config;
 use quinn_hyphae::{HandshakeBuilder, RustCryptoBackend, HYPHAE_H_V1_QUIC_V1_VERSION};
 
@@ -169,7 +169,8 @@ impl Connection {
             _ => EndpointConfig::default(),
         };
 
-        let mut quinn_endpoint = QuinnEndpoint::new(ep_config, None, socket, Arc::new(TokioRuntime))?;
+        let mut quinn_endpoint =
+            QuinnEndpoint::new(ep_config, None, socket, Arc::new(TokioRuntime))?;
 
         quinn_endpoint.set_default_client_config(config);
 
@@ -214,14 +215,7 @@ impl Connection {
     }
 
     pub async fn check() -> Result<(), Error> {
-        let try_init_conn = async {
-            ENDPOINT
-                .get()
-                .unwrap()
-                .connect()
-                .await
-                .map(AsyncMutex::new)
-        };
+        let try_init_conn = async { ENDPOINT.get().unwrap().connect().await.map(AsyncMutex::new) };
 
         let check_and_reconnect_conn = async {
             let mut conn = CONNECTION
@@ -468,9 +462,11 @@ impl Endpoint {
                     SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0))
                 };
 
-                ep.rebind(UdpSocket::bind(bind_addr).map_err(|err| {
-                    Error::Socket("failed to create endpoint UDP socket", err)
-                })?)
+                ep.rebind(
+                    UdpSocket::bind(bind_addr).map_err(|err| {
+                        Error::Socket("failed to create endpoint UDP socket", err)
+                    })?,
+                )
                 .map_err(|err| Error::Socket("failed to rebind endpoint UDP socket", err))?;
             }
 

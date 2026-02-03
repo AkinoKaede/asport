@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use parking_lot::Mutex;
+use std::sync::Arc;
 
 /// A thread-safe buffer pool to avoid frequent allocations
 pub struct BufferPool {

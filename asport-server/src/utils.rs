@@ -75,9 +75,8 @@ pub fn load_priv_key<P: AsRef<Path>>(path: P) -> Result<PrivateKeyDer<'static>, 
         Err(_) => {
             // If PEM parsing fails, try to read DER format
             if priv_key.is_none() {
-                priv_key = Some(
-                    PrivateKeyDer::try_from(key_bytes).map_err(Error::InvalidPrivateKey)?,
-                );
+                priv_key =
+                    Some(PrivateKeyDer::try_from(key_bytes).map_err(Error::InvalidPrivateKey)?);
             }
         }
     }

@@ -1,9 +1,4 @@
-use std::{
-    fmt::Display,
-    str::FromStr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{fmt::Display, str::FromStr, sync::Arc, time::Duration};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use humantime::Duration as HumanDuration;
@@ -28,9 +23,7 @@ where
     Ok(Arc::from(bytes.into_boxed_slice()))
 }
 
-pub fn deserialize_from_base64_opt<'de, D>(
-    deserializer: D,
-) -> Result<Option<Arc<[u8]>>, D::Error>
+pub fn deserialize_from_base64_opt<'de, D>(deserializer: D) -> Result<Option<Arc<[u8]>>, D::Error>
 where
     D: Deserializer<'de>,
 {

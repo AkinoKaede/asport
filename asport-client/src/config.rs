@@ -262,7 +262,6 @@ mod default {
                 vec![b"asport".to_vec()]
             }
         }
-
     }
 
     pub fn network() -> Network {
