@@ -37,13 +37,13 @@ use crate::{
     utils::{Address, CongestionControl, Network, ProxyProtocol, ServerAddress, UdpForwardMode},
 };
 
-use self::{authenticated::Authenticated, buffer_pool::BufferPool, udp_session::UdpSession};
+use self::{authenticated::Authenticated, udp_session::UdpSession};
+use asport_common::buffer_pool::BufferPool;
 use crate::utils::SecurityType;
 use quinn_hyphae::helper::hyphae_endpoint_config;
 use quinn_hyphae::{HandshakeBuilder, RustCryptoBackend, HYPHAE_H_V1_QUIC_V1_VERSION};
 
 mod authenticated;
-mod buffer_pool;
 mod handle_stream;
 mod handle_task;
 mod udp_session;
@@ -196,6 +196,7 @@ impl Connection {
             handshake_timeout: cfg.handshake_timeout,
             task_negotiation_timeout: cfg.task_negotiation_timeout,
             max_packet_size: cfg.max_packet_size,
+            buffer_pool_size: cfg.buffer_pool_size,
             gc_interval: cfg.gc_interval,
             gc_lifetime: cfg.gc_lifetime,
             proxy_protocol: cfg.proxy_protocol,
@@ -271,6 +272,7 @@ impl Connection {
         handshake_timeout: Duration,
         task_negotiation_timeout: Duration,
         max_packet_size: usize,
+        buffer_pool_size: usize,
         gc_interval: Duration,
         gc_lifetime: Duration,
         proxy_protocol: ProxyProtocol,
@@ -294,7 +296,7 @@ impl Connection {
             remote_bi_stream_cnt: Counter::new(),
             max_concurrent_uni_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
             max_concurrent_bi_streams: Arc::new(AtomicU32::new(DEFAULT_CONCURRENT_STREAMS)),
-            buffer_pool: BufferPool::new(max_packet_size, 32), // Pool size of 32 buffers
+            buffer_pool: BufferPool::new(max_packet_size, buffer_pool_size),
         };
 
         tokio::spawn(conn.clone().init(
@@ -409,6 +411,7 @@ struct Endpoint {
     handshake_timeout: Duration,
     task_negotiation_timeout: Duration,
     max_packet_size: usize,
+    buffer_pool_size: usize,
     gc_interval: Duration,
     gc_lifetime: Duration,
     proxy_protocol: ProxyProtocol,
@@ -435,6 +438,7 @@ impl Endpoint {
                         self.handshake_timeout,
                         self.task_negotiation_timeout,
                         self.max_packet_size,
+                        self.buffer_pool_size,
                         self.gc_interval,
                         self.gc_lifetime,
                         self.proxy_protocol,

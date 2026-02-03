@@ -22,7 +22,8 @@ use asport::Address;
 use crate::error::Error;
 use crate::utils::{union_proxy_protocol_addresses, ProxyProtocol};
 
-use super::{buffer_pool::BufferPool, Connection};
+use super::Connection;
+use asport_common::buffer_pool::BufferPool;
 
 #[derive(Clone)]
 pub struct UdpSession(Arc<UdpSessionInner>);

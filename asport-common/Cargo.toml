@@ -10,6 +10,7 @@ repository = "https://github.com/AkinoKaede/asport"
 [dependencies]
 base64 = { version = "0.21.7", default-features = false }
 humantime = { version = "2.1.0", default-features = false }
+parking_lot = { version = "0.12.1", default-features = false }
 serde = { version = "1.0.209", default-features = false, features = ["derive", "std"] }
 quinn-hyphae = { git = "https://github.com/AkinoKaede/hyphae-handshake", branch = "0.1.0-beta.0-ekm", package = "quinn-hyphae", default-features = false, features = ["rustcrypto", "helper"] }
 rand_core = { version = "0.6.4", default-features = false }

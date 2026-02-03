@@ -46,6 +46,12 @@ max_idle_time = "10s"
 # common value for Ethernet jumbo frame.
 max_packet_size = 1350
 
+# Buffer pool size.
+# Default: 32
+# Note: The maximum number of buffers to keep in the memory pool for UDP packet receiving.
+# Higher values can reduce memory allocation overhead but consume more memory.
+buffer_pool_size = 32
+
 # UDP session timeout.
 # Default: "5m"
 # Note: Inactive UDP sessions will be automatically cleaned up after this timeout. This helps prevent memory leaks

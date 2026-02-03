@@ -18,6 +18,7 @@ use tokio::{
 };
 
 use asport::Address;
+use asport_common::buffer_pool::BufferPool;
 
 use crate::error::Error;
 
@@ -31,6 +32,7 @@ struct UdpSessionsInner {
     socket: UdpSocket,
     local_addr: SocketAddr,
     max_pkt_size: usize,
+    buffer_pool: BufferPool,
     assoc_id_addr_map: Arc<Mutex<bimap::BiMap<u16, SocketAddr>>>,
     // Track last activity time for each association ID
     session_last_activity: Arc<Mutex<HashMap<u16, Instant>>>,
@@ -40,7 +42,7 @@ struct UdpSessionsInner {
 }
 
 impl UdpSessions {
-    pub fn with_timeout(conn: Connection, socket: UdpSocket, max_pkt_size: usize, session_timeout: Duration) -> Self {
+    pub fn with_timeout(conn: Connection, socket: UdpSocket, max_pkt_size: usize, buffer_pool_size: usize, session_timeout: Duration) -> Self {
         let (tx, rx) = oneshot::channel();
         let assoc_id_addr_map = Arc::new(Mutex::new(bimap::BiMap::new()));
         let session_last_activity = Arc::new(Mutex::new(HashMap::new()));
@@ -54,6 +56,7 @@ impl UdpSessions {
             socket,
             local_addr,
             max_pkt_size,
+            buffer_pool: BufferPool::new(max_pkt_size, buffer_pool_size),
             assoc_id_addr_map,
             session_last_activity,
             session_timeout,
@@ -114,7 +117,7 @@ impl UdpSessions {
                             attempts += 1;
                         }
 
-                        if attempts >= u16::MAX {
+                        if attempts == u16::MAX {
                             log::error!("[{id:#010x}] [{addr}] [{auth}] No available association IDs",
                                 id = session_listening.0.conn.id(),
                                 addr = session_listening.0.conn.inner.remote_address(),
@@ -206,10 +209,26 @@ impl UdpSessions {
     }
 
     async fn recv_from(&self) -> Result<(Bytes, SocketAddr), IoError> {
-        let mut buf = vec![0u8; self.0.max_pkt_size];
+        // Get buffer from pool
+        let mut buf = self.0.buffer_pool.get();
+
+        // Ensure buffer has adequate capacity
+        if buf.capacity() < self.0.max_pkt_size {
+            buf.reserve(self.0.max_pkt_size - buf.capacity());
+        }
+
+        // Resize buffer to max capacity for receiving
+        buf.resize(self.0.max_pkt_size, 0);
+
         let (n, addr) = self.0.socket.recv_from(&mut buf).await?;
-        buf.truncate(n);
-        Ok((Bytes::from(buf), addr))
+
+        // Create Bytes from the received data
+        let data = Bytes::copy_from_slice(&buf[..n]);
+
+        // Return buffer to pool
+        self.0.buffer_pool.put(buf);
+
+        Ok((data, addr))
     }
 
     pub fn validate(&self, assoc_id: u16, socket_addr: SocketAddr) -> bool {

@@ -122,6 +122,7 @@ impl Connection {
                         self.clone(),
                         udp_socket,
                         self.max_packet_size,
+                        self.buffer_pool_size,
                         self.udp_session_timeout,
                     ));
 
@@ -141,6 +142,7 @@ impl Connection {
                         self.clone(),
                         udp_socket,
                         self.max_packet_size,
+                        self.buffer_pool_size,
                         self.udp_session_timeout,
                     ));
 

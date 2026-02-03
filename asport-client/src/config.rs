@@ -99,6 +99,9 @@ pub struct Config {
     #[serde(default = "default::max_packet_size")]
     pub max_packet_size: usize,
 
+    #[serde(default = "default::buffer_pool_size")]
+    pub buffer_pool_size: usize,
+
     #[serde(default = "default::send_window")]
     pub send_window: u64,
 
@@ -304,6 +307,10 @@ mod default {
 
     pub fn max_packet_size() -> usize {
         1350
+    }
+
+    pub fn buffer_pool_size() -> usize {
+        32
     }
 
     pub fn send_window() -> u64 {

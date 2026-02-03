@@ -23,7 +23,9 @@ impl BufferPool {
         let mut buffers = self.buffers.lock();
         if let Some(mut buffer) = buffers.pop() {
             buffer.clear();
-            buffer.reserve(self.buffer_size);
+            if buffer.capacity() < self.buffer_size {
+                buffer.reserve(self.buffer_size - buffer.capacity());
+            }
             buffer
         } else {
             Vec::with_capacity(self.buffer_size)

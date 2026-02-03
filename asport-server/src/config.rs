@@ -64,6 +64,9 @@ pub struct Config {
     #[serde(default = "default::max_packet_size")]
     pub max_packet_size: usize,
 
+    #[serde(default = "default::buffer_pool_size")]
+    pub buffer_pool_size: usize,
+
     #[serde(
         default = "default::udp_session_timeout",
         deserialize_with = "deserialize_duration"
@@ -192,6 +195,10 @@ mod default {
 
     pub fn max_packet_size() -> usize {
         1350
+    }
+
+    pub fn buffer_pool_size() -> usize {
+        32
     }
 
     pub fn udp_session_timeout() -> Duration {

@@ -171,6 +171,7 @@ version = "0.3.0"
 dependencies = [
  "base64",
  "humantime",
+ "parking_lot",
  "quinn-hyphae",
  "rand_core 0.6.4",
  "serde",
