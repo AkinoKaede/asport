@@ -128,7 +128,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "asport"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "asport",
  "bitflags",
@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "asport-client"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "asport",
  "asport-common",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "asport-common"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "asport-quinn-hyphae",
  "base64",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "asport-quinn"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "asport",
  "blake3",
@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "asport-server"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "asport",
  "asport-common",

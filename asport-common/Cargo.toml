@@ -1,6 +1,6 @@
 [package]
 name = "asport-common"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Kaede Akino <i@akinokae.de>"]
 description = "Shared utilities leveraged by asport client and server."
 edition = "2021"
