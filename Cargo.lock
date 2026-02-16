@@ -103,6 +103,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -141,6 +147,7 @@ dependencies = [
  "asport",
  "asport-common",
  "asport-quinn",
+ "asport-quinn-hyphae",
  "bytes",
  "clap",
  "config",
@@ -151,7 +158,6 @@ dependencies = [
  "parking_lot",
  "ppp",
  "quinn",
- "quinn-hyphae",
  "register-count",
  "rustls",
  "rustls-native-certs",
@@ -169,14 +175,31 @@ dependencies = [
 name = "asport-common"
 version = "0.3.0"
 dependencies = [
+ "asport-quinn-hyphae",
  "base64",
  "humantime",
  "parking_lot",
- "quinn-hyphae",
  "rand_core 0.6.4",
  "serde",
  "uuid",
  "xdg",
+]
+
+[[package]]
+name = "asport-hyphae-handshake"
+version = "0.1.0-beta.0"
+dependencies = [
+ "aes-gcm",
+ "blake2",
+ "chacha20",
+ "chacha20poly1305",
+ "curve25519-dalek",
+ "hkdf",
+ "hmac",
+ "rand_core 0.6.4",
+ "sha2",
+ "snow",
+ "zeroize",
 ]
 
 [[package]]
@@ -193,12 +216,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "asport-quinn-hyphae"
+version = "0.1.0-beta.0"
+dependencies = [
+ "anyhow",
+ "asport-hyphae-handshake",
+ "base16ct",
+ "base64ct",
+ "bytes",
+ "quinn",
+ "quinn-proto",
+ "rand_core 0.6.4",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
 name = "asport-server"
 version = "0.3.0"
 dependencies = [
  "asport",
  "asport-common",
  "asport-quinn",
+ "asport-quinn-hyphae",
  "bimap",
  "bitflags",
  "bytes",
@@ -210,7 +250,6 @@ dependencies = [
  "log",
  "parking_lot",
  "quinn",
- "quinn-hyphae",
  "register-count",
  "rustls",
  "rustls-pemfile",
@@ -512,6 +551,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
+ "rand_core 0.6.4",
  "typenum",
 ]
 
@@ -613,6 +653,16 @@ checksum = "e004d887f51fcb9fef17317a2f3525c887d8aa3f4f50fed920816a688284a5b7"
 dependencies = [
  "serde",
  "typeid",
+]
+
+[[package]]
+name = "errno"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
+dependencies = [
+ "libc",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -744,25 +794,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hkdf"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
+dependencies = [
+ "hmac",
+]
+
+[[package]]
+name = "hmac"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
+dependencies = [
+ "digest",
+]
+
+[[package]]
 name = "humantime"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b112acc8b3adf4b107a8ec20977da0273a8c386765a3ec0229bd500a1443f9f"
-
-[[package]]
-name = "hyphae-handshake"
-version = "0.1.0-beta.0"
-source = "git+https://github.com/AkinoKaede/hyphae-handshake?branch=0.1.0-beta.0-ekm#ddec5578e68c5a15de9da03b2b3350f80f53232c"
-dependencies = [
- "aes-gcm",
- "blake2",
- "chacha20",
- "chacha20poly1305",
- "curve25519-dalek",
- "rand_core 0.6.4",
- "sha2",
- "zeroize",
-]
 
 [[package]]
 name = "inout"
@@ -1100,21 +1153,6 @@ dependencies = [
  "tokio",
  "tracing",
  "web-time",
-]
-
-[[package]]
-name = "quinn-hyphae"
-version = "0.1.0-beta.0"
-source = "git+https://github.com/AkinoKaede/hyphae-handshake?branch=0.1.0-beta.0-ekm#ddec5578e68c5a15de9da03b2b3350f80f53232c"
-dependencies = [
- "base16ct",
- "base64ct",
- "bytes",
- "hyphae-handshake",
- "quinn",
- "quinn-proto",
- "rand_core 0.6.4",
- "zeroize",
 ]
 
 [[package]]
@@ -1458,6 +1496,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+dependencies = [
+ "errno",
+ "libc",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1468,6 +1516,22 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "snow"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "850948bee068e713b8ab860fe1adc4d109676ab4c3b621fd8147f06b261f2f85"
+dependencies = [
+ "aes-gcm",
+ "blake2",
+ "chacha20poly1305",
+ "curve25519-dalek",
+ "rand_core 0.6.4",
+ "rustc_version",
+ "sha2",
+ "subtle",
+]
 
 [[package]]
 name = "socket2"
@@ -1594,6 +1658,7 @@ dependencies = [
  "mio",
  "parking_lot",
  "pin-project-lite",
+ "signal-hook-registry",
  "slab",
  "socket2 0.6.0",
  "tokio-macros",

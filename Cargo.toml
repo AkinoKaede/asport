@@ -3,7 +3,9 @@ members = [
 	"asport",
 	"asport-client",
 	"asport-common",
+	"asport-hyphae-handshake",
 	"asport-quinn",
+	"asport-quinn-hyphae",
 	"asport-server",
 ]
 resolver = "2"
