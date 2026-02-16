@@ -1,6 +1,6 @@
 [package]
 name = "asport-quinn-hyphae"
-version = "0.1.0-beta.0"
+version = "0.1.0-beta.1"
 readme = "README.md"
 description = "Noise protocol framework handshakes for the Quinn QUIC library"
 keywords = ["noise", "quic", "quinn"]
@@ -15,7 +15,7 @@ authors = ["Will Buik", "Kaede Akino <i@akinokae.de>"]
 name = "quinn_hyphae"
 
 [dependencies]
-hyphae-handshake = { path = "../asport-hyphae-handshake", package = "asport-hyphae-handshake", version = "0.1.0-beta.0", default-features = false, features = [ "alloc" ] }
+hyphae-handshake = { path = "../asport-hyphae-handshake", package = "asport-hyphae-handshake", version = "0.1.0-beta.1", default-features = false, features = [ "alloc" ] }
 base16ct = { version = "0.2.0", features = ["std"] }
 base64ct = { version = "1.6.0", features = ["std"] }
 bytes = { version = "1", default-features = false }

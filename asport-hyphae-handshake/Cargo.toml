@@ -1,6 +1,6 @@
 [package]
 name = "asport-hyphae-handshake"
-version = "0.1.0-beta.0"
+version = "0.1.0-beta.1"
 readme = "README.md"
 description = "Noise protocol framework handshakes for QUIC"
 keywords = ["noise", "quic", "no-std"]
