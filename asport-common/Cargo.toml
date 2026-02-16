@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/AkinoKaede/asport"
 
 [dependencies]
-base64 = { version = "0.21.7", default-features = false }
+base64 = { version = "0.21.7", default-features = false, features = ["alloc"] }
 humantime = { version = "2.1.0", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
 serde = { version = "1.0.209", default-features = false, features = ["derive", "std"] }
