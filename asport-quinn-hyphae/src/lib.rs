@@ -6,9 +6,9 @@
 //! Unlike other Noise handshake proposals for QUIC, Hyphae supports *all
 //! Noise handshake patterns* (not just IK). Hyphae supports custom Noise
 //! payloads.
-//! 
+//!
 //! ### Features:
-//! 
+//!
 //! - Secure QUIC connections with a Noise handshake instead of TLS
 //! - Use **any handshake pattern**, AEAD, and hash algorithm (not just IK)
 //! - Quinn support in the `quinn-hyphae` crate
@@ -18,12 +18,19 @@
 //!     for Rust Crypto)
 //! - Optional key-logging for diagnostics
 //! - QUIC header protection and initial packet space obfuscation
-//! 
+//!
 //! ### Examples
-//! 
+//!
 //! See the [README](https://github.com/WillBuik/hyphae-handshake)
 //! for more info and examples.
-//! 
+//!
+#![allow(
+    unused_assignments,
+    clippy::io_other_error,
+    clippy::needless_borrow,
+    clippy::new_ret_no_self,
+    clippy::option_as_ref_deref
+)]
 
 pub mod builder;
 pub mod config;
@@ -40,10 +47,10 @@ pub use hyphae_handshake::buffer;
 
 /// Re-exported types from `hyphae_handshake::crypto`.
 pub mod crypto {
-    pub use hyphae_handshake::crypto::CryptoError;
     pub use hyphae_handshake::crypto::CryptoBackend;
-    pub use hyphae_handshake::crypto::SyncCryptoBackend;
+    pub use hyphae_handshake::crypto::CryptoError;
     pub use hyphae_handshake::crypto::SecretKeySetup;
+    pub use hyphae_handshake::crypto::SyncCryptoBackend;
 
     // Re-export Hyphae keylog.
     #[cfg(feature = "keylog")]

@@ -2,7 +2,16 @@ use std::{iter::once, mem, ops::Deref};
 
 use rand_core::{CryptoRng, RngCore};
 
-use crate::{buffer::{AppendOnlyBuffer, Buffer, BufferFullError, MaxLenBuffer, VarIntSize, VarLengthPrefixBuffer}, crypto::{CryptoBackend, CryptoError, NoiseHandshake, SecretKeySetup, SymmetricKey, TransportCrypto}, customization::{HandshakeConfig, HandshakeDriver, HandshakeInfo}, Error};
+use crate::{
+    buffer::{
+        AppendOnlyBuffer, Buffer, BufferFullError, MaxLenBuffer, VarIntSize, VarLengthPrefixBuffer,
+    },
+    crypto::{
+        CryptoBackend, CryptoError, NoiseHandshake, SecretKeySetup, SymmetricKey, TransportCrypto,
+    },
+    customization::{HandshakeConfig, HandshakeDriver, HandshakeInfo},
+    Error,
+};
 
 impl From<BufferFullError> for Error {
     fn from(_: BufferFullError) -> Self {
@@ -59,8 +68,15 @@ pub struct AllocHyphaeHandshake<T: HandshakeDriver, B: CryptoBackend, R: Deref<T
 }
 
 #[cfg(feature = "alloc")]
-impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHandshake<T, B, R> {
-    pub fn new_initiator<C> (handshake_config: &C, crypto: R, version: HandshakeVersion, transport_label: &[u8], transport_params: Vec<u8>, server_name: &str) -> Result<Self, Error>
+impl<T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHandshake<T, B, R> {
+    pub fn new_initiator<C>(
+        handshake_config: &C,
+        crypto: R,
+        version: HandshakeVersion,
+        transport_label: &[u8],
+        transport_params: Vec<u8>,
+        server_name: &str,
+    ) -> Result<Self, Error>
     where
         C: HandshakeConfig<Driver = T>,
     {
@@ -68,8 +84,15 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         handshake_config.initiator_preamble(&mut preamble)?;
 
         let mut noise_handshake = Box::new(crypto.new_handshake()?);
-        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_init(noise_handshake.as_mut(), version, transport_label, &preamble, true);
-        let handshake_driver = Box::new(handshake_config.new_initiator(server_name, &mut noise_wrapper)?);
+        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_init(
+            noise_handshake.as_mut(),
+            version,
+            transport_label,
+            &preamble,
+            true,
+        );
+        let handshake_driver =
+            Box::new(handshake_config.new_initiator(server_name, &mut noise_wrapper)?);
 
         if noise_handshake.is_reset() {
             return Err(Error::Internal);
@@ -77,12 +100,13 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 
         let phase = if preamble.is_empty() {
             AllocHyphaeHandshakePhase::Initiator(
-                AllocHyphaeInitiatorPhase::WriteInitiatorConfigNoise { transport_params }
+                AllocHyphaeInitiatorPhase::WriteInitiatorConfigNoise { transport_params },
             )
         } else {
-            AllocHyphaeHandshakePhase::Initiator(
-                AllocHyphaeInitiatorPhase::WritePreamble { preamble, transport_params }
-            )
+            AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::WritePreamble {
+                preamble,
+                transport_params,
+            })
         };
 
         Ok(Self {
@@ -96,28 +120,47 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         })
     }
 
-    pub fn new_responder<C> (handshake_config: &C, crypto: R, version: HandshakeVersion, transport_label: &[u8], transport_params: Vec<u8>, mut first_message: Vec<u8>) -> Result<Self, Error>
+    pub fn new_responder<C>(
+        handshake_config: &C,
+        crypto: R,
+        version: HandshakeVersion,
+        transport_label: &[u8],
+        transport_params: Vec<u8>,
+        mut first_message: Vec<u8>,
+    ) -> Result<Self, Error>
     where
         C: HandshakeConfig<Driver = T>,
     {
         let mut noise_handshake = Box::new(crypto.new_handshake()?);
 
-        let preamble = if MessageReader::decode_message_type(&first_message)? == HandshakeMessage::Preamble {
-            let reader = MessageReader::decode_in_place(&mut first_message, HandshakeMessage::Preamble, noise_handshake.as_mut())?;
-            reader.payload()?
-        } else {
-            &[]
-        };
+        let preamble =
+            if MessageReader::decode_message_type(&first_message)? == HandshakeMessage::Preamble {
+                let reader = MessageReader::decode_in_place(
+                    &mut first_message,
+                    HandshakeMessage::Preamble,
+                    noise_handshake.as_mut(),
+                )?;
+                reader.payload()?
+            } else {
+                &[]
+            };
 
-        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_init(noise_handshake.as_mut(), version, transport_label, preamble, false);
-        let handshake_driver = Box::new(handshake_config.new_responder(preamble, &mut noise_wrapper)?);
+        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_init(
+            noise_handshake.as_mut(),
+            version,
+            transport_label,
+            preamble,
+            false,
+        );
+        let handshake_driver =
+            Box::new(handshake_config.new_responder(preamble, &mut noise_wrapper)?);
 
         if noise_handshake.is_reset() {
             return Err(Error::Internal);
         }
 
         let phase = AllocHyphaeHandshakePhase::Responder(
-            AllocHyphaeResponderPhase::ReadInitiatorConfigNoise { transport_params }
+            AllocHyphaeResponderPhase::ReadInitiatorConfigNoise { transport_params },
         );
 
         let mut this = Self {
@@ -133,7 +176,7 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         if preamble.is_empty() {
             this.read_message(first_message)?
         }
-        
+
         Ok(this)
     }
 
@@ -143,16 +186,20 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 
     /// Returns true once the Noise portion of the handshake is finished
     /// and 1-RTT keys are available.
-    /// 
+    ///
     /// Peers will still exchange final messages but this happens in the
     /// 1-RTT packet space and cannot fail the handshake.
-    /// 
+    ///
     /// The Noise handshake state and its key material will be discarded
     /// after a peer sends its final message.
     pub fn is_handshake_finished(&self) -> bool {
         match self.phase {
-            AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::SendFinal { .. }) => true,
-            AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::SendFinal { .. }) => true,
+            AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::SendFinal {
+                ..
+            }) => true,
+            AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::SendFinal {
+                ..
+            }) => true,
             AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::RecvFinal) => true,
             AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::RecvFinal) => true,
             AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::Finalized) => true,
@@ -163,7 +210,7 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 
     /// Returns true once this peer has sent and received its final
     /// message.
-    /// 
+    ///
     /// At this point, all handshake state can be discarded.
     pub fn is_handshake_finalized(&self) -> bool {
         //todo, broken, fix this - also need to dispose of noise handshake before reading each other's finals to clear keys in case the other side never responds
@@ -203,7 +250,8 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 
     pub fn next_level_secret(&mut self, level_secret: &mut SymmetricKey) -> Result<(), Error> {
         if self.next_level_secret_ready {
-            self.noise_handshake.get_ask(HYPHAE_KEY_ASK_LABEL, level_secret)?;
+            self.noise_handshake
+                .get_ask(HYPHAE_KEY_ASK_LABEL, level_secret)?;
             self.next_level_secret_ready = false;
             Ok(())
         } else {
@@ -216,35 +264,43 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
     }
 
     pub fn export_1rtt_rekey(&mut self, rekey: &mut B::TransportRekey) -> Result<(), Error> {
-        Ok(self.crypto.export_1rtt_rekey(&mut self.noise_handshake, rekey)?)
+        Ok(self
+            .crypto
+            .export_1rtt_rekey(&mut self.noise_handshake, rekey)?)
     }
 
     /// Export keying material for application use, similar to TLS export_keying_material
-    /// 
+    ///
     /// This function allows applications to derive additional key material from
     /// the completed handshake state. The derived keys are cryptographically
     /// bound to the handshake and can be used for application-specific purposes.
-    /// 
+    ///
     /// # Parameters
     /// * `label` - An application-defined label to distinguish different uses
     /// * `context` - Optional context information to bind into the derivation
     /// * `output` - Buffer to receive the derived key material
-    /// 
+    ///
     /// # Returns
     /// * `Ok(())` on success
     /// * `Err(Error::Internal)` if called before handshake completion
-    /// 
+    ///
     /// # Example
     /// ```rust,ignore
     /// let mut app_key = vec![0u8; 32];
     /// handshake.export_keying_material(b"my-app-key", b"session-123", &mut app_key)?;
     /// ```
-    pub fn export_keying_material(&self, label: &[u8], context: &[u8], output: &mut [u8]) -> Result<(), Error> {
+    pub fn export_keying_material(
+        &self,
+        label: &[u8],
+        context: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), Error> {
         if !self.is_handshake_finished() {
             return Err(Error::Internal);
         }
-        
-        self.noise_handshake.export_keying_material(label, context, output)?;
+
+        self.noise_handshake
+            .export_keying_material(label, context, output)?;
         Ok(())
     }
 
@@ -268,38 +324,53 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         };
 
         match phase {
-            AllocHyphaeInitiatorPhase::WritePreamble { preamble, transport_params } => {
+            AllocHyphaeInitiatorPhase::WritePreamble {
+                preamble,
+                transport_params,
+            } => {
                 write_preamble(buffer, preamble.as_slice())?;
                 *phase = AllocHyphaeInitiatorPhase::WriteInitiatorConfigNoise {
                     transport_params: mem::take(transport_params),
                 };
                 Ok(())
-            },
+            }
 
             AllocHyphaeInitiatorPhase::WriteInitiatorConfigNoise { transport_params } => {
                 let transport_params = mem::take(transport_params);
-                write_initiator_initial(buffer, self.noise_handshake.as_mut(), transport_params.as_slice(), self.handshake_driver.as_mut(), phase.message_position()?)?;
+                write_initiator_initial(
+                    buffer,
+                    self.noise_handshake.as_mut(),
+                    transport_params.as_slice(),
+                    self.handshake_driver.as_mut(),
+                    phase.message_position()?,
+                )?;
                 *phase = AllocHyphaeInitiatorPhase::ReadResponderConfigNoise;
                 Ok(())
-            },
+            }
 
-            AllocHyphaeInitiatorPhase::Noise { .. } if self.noise_handshake.is_my_turn() => self.write_noise_message(buffer),
+            AllocHyphaeInitiatorPhase::Noise { .. } if self.noise_handshake.is_my_turn() => {
+                self.write_noise_message(buffer)
+            }
 
             AllocHyphaeInitiatorPhase::SendFinal { received_final } => {
                 if self.next_level_secret_ready {
                     return Err(Error::Internal); // Todo, maybe just always check this for safety
                 }
 
-                write_final(buffer, self.noise_handshake.as_mut(), self.handshake_driver.as_mut())?;
+                write_final(
+                    buffer,
+                    self.noise_handshake.as_mut(),
+                    self.handshake_driver.as_mut(),
+                )?;
                 // Todo, destroy noise handshake state here.
                 match received_final {
                     true => *phase = AllocHyphaeInitiatorPhase::Finalized,
                     false => *phase = AllocHyphaeInitiatorPhase::RecvFinal,
                 }
                 Ok(())
-            },
+            }
 
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
@@ -313,48 +384,71 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
                 let transport_params = mem::take(transport_params);
 
                 let prev_hash = self.noise_handshake.handshake_hash().to_vec();
-                let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::Initial, self.noise_handshake.as_mut())?;
+                let reader = MessageReader::decode_in_place(
+                    &mut message,
+                    HandshakeMessage::Initial,
+                    self.noise_handshake.as_mut(),
+                )?;
                 let (peer_transport_params, app_payload) = reader.initial_init_payloads()?;
                 self.peer_transport_params = Some(peer_transport_params.to_vec());
 
-                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(),Some(phase.message_position()?), Some(&prev_hash));
-                self.handshake_driver.read_noise_payload(app_payload, &mut noise_wrapper)?;
+                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(
+                    self.noise_handshake.as_mut(),
+                    Some(phase.message_position()?),
+                    Some(&prev_hash),
+                );
+                self.handshake_driver
+                    .read_noise_payload(app_payload, &mut noise_wrapper)?;
 
-                *phase = AllocHyphaeResponderPhase::WriteResponderConfigNoise {
-                    transport_params,
-                };
+                *phase = AllocHyphaeResponderPhase::WriteResponderConfigNoise { transport_params };
 
                 Ok(())
-            },
+            }
 
-            AllocHyphaeResponderPhase::Noise { .. } if !self.noise_handshake.is_my_turn() => self.read_noise_message(message),
+            AllocHyphaeResponderPhase::Noise { .. } if !self.noise_handshake.is_my_turn() => {
+                self.read_noise_message(message)
+            }
 
-            AllocHyphaeResponderPhase::SendFinal { received_final: false } |
-            AllocHyphaeResponderPhase::RecvFinal => {
+            AllocHyphaeResponderPhase::SendFinal {
+                received_final: false,
+            }
+            | AllocHyphaeResponderPhase::RecvFinal => {
                 if self.next_level_secret_ready {
                     return Err(Error::Internal);
                 }
 
                 let prev_hash = self.noise_handshake.handshake_hash().to_vec();
-                let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::Final, self.noise_handshake.as_mut())?;
+                let reader = MessageReader::decode_in_place(
+                    &mut message,
+                    HandshakeMessage::Final,
+                    self.noise_handshake.as_mut(),
+                )?;
                 let final_payload = reader.final_payload()?;
-                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(), None, Some(&prev_hash));
-                self.handshake_driver.read_final_payload(final_payload, &mut noise_wrapper)?;
+                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(
+                    self.noise_handshake.as_mut(),
+                    None,
+                    Some(&prev_hash),
+                );
+                self.handshake_driver
+                    .read_final_payload(final_payload, &mut noise_wrapper)?;
 
                 match phase {
-                    AllocHyphaeResponderPhase::SendFinal { received_final: false } => {
-                        *phase = AllocHyphaeResponderPhase::SendFinal { received_final: true }
-                    },
+                    AllocHyphaeResponderPhase::SendFinal {
+                        received_final: false,
+                    } => {
+                        *phase = AllocHyphaeResponderPhase::SendFinal {
+                            received_final: true,
+                        }
+                    }
                     _ => *phase = AllocHyphaeResponderPhase::Finalized,
                 }
 
                 Ok(())
-            },
+            }
 
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
-
 
     fn responder_write_message(&mut self, buffer: &mut impl Buffer) -> Result<(), Error> {
         let AllocHyphaeHandshakePhase::Responder(ref mut phase) = self.phase else {
@@ -366,23 +460,33 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
                 // Build deferred payload.
                 let transport_params = mem::take(transport_params);
                 let mut deferred_payload = Vec::new();
-                write_responder_deferred_payload(&mut deferred_payload, self.noise_handshake.as_mut(), transport_params.as_slice(), false, self.handshake_driver.as_mut(), phase.message_position()?)?;
+                write_responder_deferred_payload(
+                    &mut deferred_payload,
+                    self.noise_handshake.as_mut(),
+                    transport_params.as_slice(),
+                    false,
+                    self.handshake_driver.as_mut(),
+                    phase.message_position()?,
+                )?;
 
                 let crypto = self.crypto.transport_crypto(&self.noise_handshake)?;
                 let mut deferred_payload_hash = crypto.zeros_hash();
                 crypto.hash_into(&deferred_payload[1..], &mut deferred_payload_hash);
 
                 // Build initial message with deferred payload hash.
-                write_responder_initial(buffer, self.noise_handshake.as_mut(), &crypto.hash_as_slice(&deferred_payload_hash))?;
+                write_responder_initial(
+                    buffer,
+                    self.noise_handshake.as_mut(),
+                    &crypto.hash_as_slice(&deferred_payload_hash),
+                )?;
 
-                *phase = AllocHyphaeResponderPhase::WriteResponderDeferredPayload {
-                    deferred_payload,
-                };
+                *phase =
+                    AllocHyphaeResponderPhase::WriteResponderDeferredPayload { deferred_payload };
 
                 self.next_level_secret_ready = true;
 
                 Ok(())
-            },
+            }
 
             AllocHyphaeResponderPhase::WriteResponderDeferredPayload { deferred_payload } => {
                 if self.next_level_secret_ready {
@@ -392,25 +496,31 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
                 buffer.extend_from_slice(&deferred_payload)?;
                 *phase = AllocHyphaeResponderPhase::Noise { position: 3 };
                 self.check_noise_finished()
-            },
+            }
 
-            AllocHyphaeResponderPhase::Noise { .. } if self.noise_handshake.is_my_turn() => self.write_noise_message(buffer),
+            AllocHyphaeResponderPhase::Noise { .. } if self.noise_handshake.is_my_turn() => {
+                self.write_noise_message(buffer)
+            }
 
             AllocHyphaeResponderPhase::SendFinal { received_final } => {
                 if self.next_level_secret_ready {
                     return Err(Error::Internal); // Todo, maybe just always check this for safety
                 }
 
-                write_final(buffer, self.noise_handshake.as_mut(), self.handshake_driver.as_mut())?;
+                write_final(
+                    buffer,
+                    self.noise_handshake.as_mut(),
+                    self.handshake_driver.as_mut(),
+                )?;
                 // Todo, destroy noise handshake state here.
                 match received_final {
                     true => *phase = AllocHyphaeResponderPhase::Finalized,
                     false => *phase = AllocHyphaeResponderPhase::RecvFinal,
                 }
                 Ok(())
-            },
+            }
 
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
@@ -422,7 +532,11 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         match phase {
             AllocHyphaeInitiatorPhase::ReadResponderConfigNoise => {
                 let prev_noise_hash = self.noise_handshake.handshake_hash().to_vec();
-                let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::Initial, self.noise_handshake.as_mut())?;
+                let reader = MessageReader::decode_in_place(
+                    &mut message,
+                    HandshakeMessage::Initial,
+                    self.noise_handshake.as_mut(),
+                )?;
                 let deferred_payload_hash = reader.initial_resp_payloads()?;
 
                 *phase = AllocHyphaeInitiatorPhase::ReadResponderDeferredPayload {
@@ -432,16 +546,23 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 
                 self.next_level_secret_ready = true;
                 Ok(())
-            },
+            }
 
-            AllocHyphaeInitiatorPhase::ReadResponderDeferredPayload { deferred_payload_hash, prev_noise_hash } => {
+            AllocHyphaeInitiatorPhase::ReadResponderDeferredPayload {
+                deferred_payload_hash,
+                prev_noise_hash,
+            } => {
                 if self.next_level_secret_ready {
                     return Err(Error::Internal);
                 }
 
                 let prev_noise_hash = mem::take(prev_noise_hash);
 
-                let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::DeferredPayload, self.noise_handshake.as_mut())?;
+                let reader = MessageReader::decode_in_place(
+                    &mut message,
+                    HandshakeMessage::DeferredPayload,
+                    self.noise_handshake.as_mut(),
+                )?;
 
                 let crypto = self.crypto.transport_crypto(&self.noise_handshake)?;
                 let mut actual_payload_hash = crypto.zeros_hash();
@@ -453,52 +574,85 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
                 let (peer_params, zero_rtt_acc, app_payload) = reader.deferred_resp_payloads()?;
                 self.peer_zero_rtt_accepted = Some(zero_rtt_acc);
 
-                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(), Some(phase.message_position()?), Some(&prev_noise_hash));
-                self.handshake_driver.read_noise_payload(app_payload, &mut noise_wrapper)?;
+                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(
+                    self.noise_handshake.as_mut(),
+                    Some(phase.message_position()?),
+                    Some(&prev_noise_hash),
+                );
+                self.handshake_driver
+                    .read_noise_payload(app_payload, &mut noise_wrapper)?;
 
                 self.peer_transport_params = Some(peer_params.to_vec());
                 *phase = AllocHyphaeInitiatorPhase::Noise { position: 3 };
                 self.check_noise_finished()
-            },
+            }
 
-            AllocHyphaeInitiatorPhase::Noise { .. } if !self.noise_handshake.is_my_turn() => self.read_noise_message(message),
+            AllocHyphaeInitiatorPhase::Noise { .. } if !self.noise_handshake.is_my_turn() => {
+                self.read_noise_message(message)
+            }
 
-            AllocHyphaeInitiatorPhase::SendFinal { received_final: false } |
-            AllocHyphaeInitiatorPhase::RecvFinal => {
+            AllocHyphaeInitiatorPhase::SendFinal {
+                received_final: false,
+            }
+            | AllocHyphaeInitiatorPhase::RecvFinal => {
                 if self.next_level_secret_ready {
                     return Err(Error::Internal);
                 }
 
-                let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::Final, self.noise_handshake.as_mut())?;
+                let reader = MessageReader::decode_in_place(
+                    &mut message,
+                    HandshakeMessage::Final,
+                    self.noise_handshake.as_mut(),
+                )?;
                 let final_payload = reader.final_payload()?;
-                let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(), None, None);
-                self.handshake_driver.read_final_payload(final_payload, &mut noise_wrapper)?;
+                let mut noise_wrapper =
+                    NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(), None, None);
+                self.handshake_driver
+                    .read_final_payload(final_payload, &mut noise_wrapper)?;
 
                 match phase {
-                    AllocHyphaeInitiatorPhase::SendFinal { received_final: false } => {
-                        *phase = AllocHyphaeInitiatorPhase::SendFinal { received_final: true }
-                    },
+                    AllocHyphaeInitiatorPhase::SendFinal {
+                        received_final: false,
+                    } => {
+                        *phase = AllocHyphaeInitiatorPhase::SendFinal {
+                            received_final: true,
+                        }
+                    }
                     _ => *phase = AllocHyphaeInitiatorPhase::Finalized,
                 }
 
                 Ok(())
-            },
+            }
 
             _ => Err(Error::HandshakeFailed),
         }
     }
 
     fn write_noise_message(&mut self, buffer: &mut impl Buffer) -> Result<(), Error> {
-        write_noise(buffer, self.noise_handshake.as_mut(), self.handshake_driver.as_mut(), self.phase.message_position()?)?;
+        write_noise(
+            buffer,
+            self.noise_handshake.as_mut(),
+            self.handshake_driver.as_mut(),
+            self.phase.message_position()?,
+        )?;
         self.phase.advance_message_position()?;
         self.check_noise_finished()
     }
 
     fn read_noise_message(&mut self, mut message: Vec<u8>) -> Result<(), Error> {
         let prev_hash = self.noise_handshake.handshake_hash().to_vec();
-        let reader = MessageReader::decode_in_place(&mut message, HandshakeMessage::Noise, self.noise_handshake.as_mut())?;
-        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(self.noise_handshake.as_mut(), Some(self.phase.message_position()?), Some(&prev_hash));
-        self.handshake_driver.read_noise_payload(reader.payload()?, &mut noise_wrapper)?;
+        let reader = MessageReader::decode_in_place(
+            &mut message,
+            HandshakeMessage::Noise,
+            self.noise_handshake.as_mut(),
+        )?;
+        let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(
+            self.noise_handshake.as_mut(),
+            Some(self.phase.message_position()?),
+            Some(&prev_hash),
+        );
+        self.handshake_driver
+            .read_noise_payload(reader.payload()?, &mut noise_wrapper)?;
         self.phase.advance_message_position()?;
         self.check_noise_finished()
     }
@@ -507,15 +661,23 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
         match &mut self.phase {
             AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::Noise { .. }) => {
                 if self.noise_handshake.is_finished() {
-                    self.phase = AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::SendFinal { received_final: false });
+                    self.phase = AllocHyphaeHandshakePhase::Initiator(
+                        AllocHyphaeInitiatorPhase::SendFinal {
+                            received_final: false,
+                        },
+                    );
                 }
-            },
+            }
             AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::Noise { .. }) => {
                 if self.noise_handshake.is_finished() {
-                    self.phase = AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::SendFinal { received_final: false });
+                    self.phase = AllocHyphaeHandshakePhase::Responder(
+                        AllocHyphaeResponderPhase::SendFinal {
+                            received_final: false,
+                        },
+                    );
                 }
-            },
-            _ => return Err(Error::Internal)
+            }
+            _ => return Err(Error::Internal),
         }
 
         if self.noise_handshake.is_finished() {
@@ -526,8 +688,8 @@ impl <T: HandshakeDriver, B: CryptoBackend, R: Deref<Target = B>> AllocHyphaeHan
 }
 
 enum AllocHyphaeHandshakePhase {
-    Initiator (AllocHyphaeInitiatorPhase),
-    Responder (AllocHyphaeResponderPhase),
+    Initiator(AllocHyphaeInitiatorPhase),
+    Responder(AllocHyphaeResponderPhase),
 }
 
 impl AllocHyphaeHandshakePhase {
@@ -540,9 +702,13 @@ impl AllocHyphaeHandshakePhase {
 
     pub fn advance_message_position(&mut self) -> Result<(), Error> {
         let position = match self {
-            AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::Noise { position }) => position,
-            AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::Noise { position }) => position,
-            _ => return Err(Error::Internal)
+            AllocHyphaeHandshakePhase::Initiator(AllocHyphaeInitiatorPhase::Noise { position }) => {
+                position
+            }
+            AllocHyphaeHandshakePhase::Responder(AllocHyphaeResponderPhase::Noise { position }) => {
+                position
+            }
+            _ => return Err(Error::Internal),
         };
         *position = position.checked_add(1).ok_or(Error::Internal)?;
         Ok(())
@@ -584,21 +750,11 @@ impl AllocHyphaeInitiatorPhase {
 }
 
 enum AllocHyphaeResponderPhase {
-    ReadInitiatorConfigNoise {
-        transport_params: Vec<u8>,
-    },
-    WriteResponderConfigNoise {
-        transport_params: Vec<u8>,
-    },
-    WriteResponderDeferredPayload {
-        deferred_payload: Vec<u8>,
-    },
-    Noise {
-        position: u8,
-    },
-    SendFinal {
-        received_final: bool,
-    },
+    ReadInitiatorConfigNoise { transport_params: Vec<u8> },
+    WriteResponderConfigNoise { transport_params: Vec<u8> },
+    WriteResponderDeferredPayload { deferred_payload: Vec<u8> },
+    Noise { position: u8 },
+    SendFinal { received_final: bool },
     RecvFinal,
     Finalized,
 }
@@ -636,23 +792,22 @@ impl HandshakeMessage {
             x if x == Self::Final as u8 => Ok(Self::Final),
             x if x == Self::FinalPayload as u8 => Ok(Self::FinalPayload),
             x if x == Self::Failed as u8 => Ok(Self::Failed),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 
     pub fn is_encrypted(self) -> bool {
         match self {
-            HandshakeMessage::Initial |
-            HandshakeMessage::Noise => true,
+            HandshakeMessage::Initial | HandshakeMessage::Noise => true,
             _ => false,
         }
     }
 
     pub fn has_compound_payload(self) -> bool {
         match self {
-            HandshakeMessage::Initial |
-            HandshakeMessage::DeferredPayload |
-            HandshakeMessage::FinalPayload => true,
+            HandshakeMessage::Initial
+            | HandshakeMessage::DeferredPayload
+            | HandshakeMessage::FinalPayload => true,
             _ => false,
         }
     }
@@ -682,12 +837,12 @@ enum PayloadFrame {
 
 impl PayloadFrame {
     /// Optional frame lower bound (inclusive).
-    /// 
+    ///
     /// Optional frames can be ignored if they are not supported. These
     /// frames must begin with a `VarInt` length prefix and not be
     /// essential to the handshake. Frame IDs less than the optional
     /// base must be recognized or the handshake will fail.
-    /// 
+    ///
     /// This feature isn't used yet, but is here to allow extensibility
     /// without revving the handshake version.
     const OPTIONAL_BASE: u8 = 128;
@@ -704,7 +859,7 @@ impl PayloadFrame {
             (HandshakeMessage::DeferredPayload, false, Self::ZeroRttAccepted) => Ok(()),
             (HandshakeMessage::DeferredPayload, false, Self::ApplicationPayload) => Ok(()),
             (HandshakeMessage::FinalPayload, false, Self::ApplicationPayload) => Ok(()),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 
@@ -720,7 +875,10 @@ impl PayloadFrame {
         }
     }
 
-    fn get_frame_payload(this: Option<Self>, mut remaining: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+    fn get_frame_payload(
+        this: Option<Self>,
+        mut remaining: &[u8],
+    ) -> Result<(&[u8], &[u8]), Error> {
         let payload_len = match this {
             Some(Self::ApplicationPayload) => remaining.len(),
             Some(Self::DeferredPayloadHash) => remaining.len(),
@@ -728,7 +886,8 @@ impl PayloadFrame {
             Some(Self::ZeroRttAccepted) => 0,
             None | Some(Self::TransportParameters) => {
                 // todo, better varint decoding
-                let prefix_len = VarIntSize::from_msb(remaining.get(0).copied().ok_or(Error::HandshakeFailed)?);
+                let prefix_len =
+                    VarIntSize::from_msb(remaining.get(0).copied().ok_or(Error::HandshakeFailed)?);
                 if remaining.len() < prefix_len.len() {
                     return Err(Error::HandshakeFailed);
                 }
@@ -737,16 +896,22 @@ impl PayloadFrame {
                 let mut prefix64 = [0u8; 8];
                 prefix64[8 - prefix.len()..].copy_from_slice(prefix);
                 prefix64[8 - prefix.len()] &= !0xC0;
-                u64::from_be_bytes(prefix64).try_into().map_err(|_| Error::HandshakeFailed)?
+                u64::from_be_bytes(prefix64)
+                    .try_into()
+                    .map_err(|_| Error::HandshakeFailed)?
             }
         };
         if payload_len > remaining.len() {
-            return Err(Error::HandshakeFailed)
+            return Err(Error::HandshakeFailed);
         }
         Ok(remaining.split_at(payload_len))
     }
 
-    pub fn next_frame(remaining: &[u8], message: HandshakeMessage, from_initiator: bool) -> Result<Option<(Self, &[u8], &[u8])>, Error> {
+    pub fn next_frame(
+        remaining: &[u8],
+        message: HandshakeMessage,
+        from_initiator: bool,
+    ) -> Result<Option<(Self, &[u8], &[u8])>, Error> {
         let Some(frame_id) = remaining.get(0).cloned() else {
             return Ok(None);
         };
@@ -758,13 +923,13 @@ impl PayloadFrame {
         let (frame_payload, remaining) = Self::get_frame_payload(frame_type, &remaining[1..])?;
 
         match frame_type {
-            Some(frame_type) if frame_type != Self::Padding =>
-                Ok(Some((frame_type, frame_payload, remaining))),
+            Some(frame_type) if frame_type != Self::Padding => {
+                Ok(Some((frame_type, frame_payload, remaining)))
+            }
 
             _ => Self::next_frame(remaining, message, from_initiator), // todo, this could be an issue if it isn't a tail call
         }
     }
-    
 }
 
 struct NoiseHandshakeWrapper<'a, X: NoiseHandshake> {
@@ -775,8 +940,14 @@ struct NoiseHandshakeWrapper<'a, X: NoiseHandshake> {
     prev_hash: Option<&'a [u8]>,
 }
 
-impl <'a, X: NoiseHandshake> NoiseHandshakeWrapper<'a, X> {
-    pub fn wrap_init(inner: &'a mut X, version: HandshakeVersion, transport_label: &'a [u8], preamble: &'a [u8], initiator: bool) -> Self {
+impl<'a, X: NoiseHandshake> NoiseHandshakeWrapper<'a, X> {
+    pub fn wrap_init(
+        inner: &'a mut X,
+        version: HandshakeVersion,
+        transport_label: &'a [u8],
+        preamble: &'a [u8],
+        initiator: bool,
+    ) -> Self {
         Self {
             inner,
             init_info: Some((version, transport_label, preamble)),
@@ -786,7 +957,11 @@ impl <'a, X: NoiseHandshake> NoiseHandshakeWrapper<'a, X> {
         }
     }
 
-    pub fn wrap_payload(inner: &'a mut X, position: Option<u8>, prev_hash: Option<&'a [u8]>) -> Self {
+    pub fn wrap_payload(
+        inner: &'a mut X,
+        position: Option<u8>,
+        prev_hash: Option<&'a [u8]>,
+    ) -> Self {
         Self {
             inner,
             init_info: None,
@@ -797,8 +972,15 @@ impl <'a, X: NoiseHandshake> NoiseHandshakeWrapper<'a, X> {
     }
 }
 
-impl <X: NoiseHandshake> HandshakeInfo for NoiseHandshakeWrapper<'_, X> {
-    fn initialize(&mut self, rng: &mut (impl CryptoRng + RngCore), protocol: &str, prologue: &[u8], s: Option<SecretKeySetup>, rs: Option<&[u8]>) -> Result<(), CryptoError> {
+impl<X: NoiseHandshake> HandshakeInfo for NoiseHandshakeWrapper<'_, X> {
+    fn initialize(
+        &mut self,
+        rng: &mut (impl CryptoRng + RngCore),
+        protocol: &str,
+        prologue: &[u8],
+        s: Option<SecretKeySetup>,
+        rs: Option<&[u8]>,
+    ) -> Result<(), CryptoError> {
         let Some(initiator) = self.initiator else {
             return Err(CryptoError::Internal);
         };
@@ -814,8 +996,7 @@ impl <X: NoiseHandshake> HandshakeInfo for NoiseHandshakeWrapper<'_, X> {
             return Err(CryptoError::Internal);
         }
 
-        let handshake_prologue =
-            once(version.label())
+        let handshake_prologue = once(version.label())
             .chain(once(b".".as_slice()))
             .chain(once(transport_label))
             .chain(once(b".".as_slice()))
@@ -823,7 +1004,8 @@ impl <X: NoiseHandshake> HandshakeInfo for NoiseHandshakeWrapper<'_, X> {
             .chain(once(preamble))
             .chain(once(prologue));
 
-        self.inner.initialize(rng, protocol, initiator, handshake_prologue, s, rs)
+        self.inner
+            .initialize(rng, protocol, initiator, handshake_prologue, s, rs)
     }
 
     fn set_token(&mut self, _token: &str, _value: &[u8]) -> Result<(), CryptoError> {
@@ -841,11 +1023,11 @@ impl <X: NoiseHandshake> HandshakeInfo for NoiseHandshakeWrapper<'_, X> {
     fn is_finished(&self) -> bool {
         self.inner.is_finished()
     }
-    
+
     fn handshake_position(&self) -> Option<u8> {
         self.position
     }
-    
+
     fn remote_public(&self) -> Option<&[u8]> {
         self.inner.remote_public()
     }
@@ -867,7 +1049,7 @@ struct MessageReader<'a> {
     message_type: HandshakeMessage,
 }
 
-impl <'a> MessageReader<'a> {
+impl<'a> MessageReader<'a> {
     pub fn decode_message_type(buffer: &[u8]) -> Result<HandshakeMessage, Error> {
         if buffer.is_empty() {
             return Err(Error::HandshakeFailed);
@@ -876,20 +1058,25 @@ impl <'a> MessageReader<'a> {
         HandshakeMessage::from_id(buffer[0])
     }
 
-    pub fn decode_in_place(buffer: &'a mut [u8], expect: HandshakeMessage, noise: &mut impl NoiseHandshake) -> Result<Self, Error> {
+    pub fn decode_in_place(
+        buffer: &'a mut [u8],
+        expect: HandshakeMessage,
+        noise: &mut impl NoiseHandshake,
+    ) -> Result<Self, Error> {
         let message_type = Self::decode_message_type(buffer)?;
         let buffer = &mut buffer[1..];
 
         let expected = match expect {
-            HandshakeMessage::Final => 
-                message_type == HandshakeMessage::Final ||
-                message_type == HandshakeMessage::FinalPayload,
+            HandshakeMessage::Final => {
+                message_type == HandshakeMessage::Final
+                    || message_type == HandshakeMessage::FinalPayload
+            }
             expect => expect == message_type,
         };
         if !expected {
             return Err(Error::HandshakeFailed);
         }
-        
+
         // Decrypt Noise messages in place, extract payload.
         let payload = if message_type.is_encrypted() {
             noise.read_message_in_place(buffer)?
@@ -898,8 +1085,8 @@ impl <'a> MessageReader<'a> {
         };
 
         // Check compound payload version.
-        if message_type.has_compound_payload() &&
-           (payload.is_empty() || payload[0] != HandshakeVersion::Version1.id())
+        if message_type.has_compound_payload()
+            && (payload.is_empty() || payload[0] != HandshakeVersion::Version1.id())
         {
             return Err(Error::HandshakeFailed);
         }
@@ -937,13 +1124,19 @@ impl <'a> MessageReader<'a> {
         let mut application_payload = None;
 
         loop {
-            let Some((frame, payload, remaining)) = PayloadFrame::next_frame(frame_cursor, self.message_type, true)? else {
+            let Some((frame, payload, remaining)) =
+                PayloadFrame::next_frame(frame_cursor, self.message_type, true)?
+            else {
                 break;
             };
             match frame {
-                PayloadFrame::ApplicationPayload if application_payload.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::ApplicationPayload if application_payload.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::ApplicationPayload => application_payload = Some(payload),
-                PayloadFrame::TransportParameters if transport_params.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::TransportParameters if transport_params.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::TransportParameters => transport_params = Some(payload),
                 _ => {}
             }
@@ -958,7 +1151,7 @@ impl <'a> MessageReader<'a> {
 
         match (transport_params, application_payload) {
             (Some(tp), Some(ap)) => Ok((tp, ap)),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 
@@ -973,24 +1166,28 @@ impl <'a> MessageReader<'a> {
         let mut deferred_hash = None;
 
         loop {
-            let Some((frame, payload, remaining)) = PayloadFrame::next_frame(frame_cursor, self.message_type, false)? else {
+            let Some((frame, payload, remaining)) =
+                PayloadFrame::next_frame(frame_cursor, self.message_type, false)?
+            else {
                 break;
             };
             match frame {
-                PayloadFrame::DeferredPayloadHash if deferred_hash.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::DeferredPayloadHash if deferred_hash.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::DeferredPayloadHash => deferred_hash = Some(payload),
                 _ => {}
             }
             frame_cursor = remaining;
         }
-        
+
         if let Some(true) = deferred_hash.map(|s| s.is_empty()) {
             return Err(Error::HandshakeFailed);
         }
 
         match deferred_hash {
             Some(dh) => Ok(dh),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 
@@ -1007,21 +1204,29 @@ impl <'a> MessageReader<'a> {
         let mut zero_rtt_accepted = None;
 
         loop {
-            let Some((frame, payload, remaining)) = PayloadFrame::next_frame(frame_cursor, self.message_type, false)? else {
+            let Some((frame, payload, remaining)) =
+                PayloadFrame::next_frame(frame_cursor, self.message_type, false)?
+            else {
                 break;
             };
             match frame {
-                PayloadFrame::ApplicationPayload if application_payload.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::ApplicationPayload if application_payload.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::ApplicationPayload => application_payload = Some(payload),
-                PayloadFrame::TransportParameters if transport_params.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::TransportParameters if transport_params.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::TransportParameters => transport_params = Some(payload),
-                PayloadFrame::ZeroRttAccepted if zero_rtt_accepted.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::ZeroRttAccepted if zero_rtt_accepted.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::ZeroRttAccepted => zero_rtt_accepted = Some(true),
                 _ => {}
             }
             frame_cursor = remaining;
         }
-        
+
         if let Some(true) = application_payload.map(|s| s.is_empty()) {
             return Err(Error::HandshakeFailed);
         }
@@ -1031,7 +1236,7 @@ impl <'a> MessageReader<'a> {
 
         match (transport_params, zero_rtt_accepted, application_payload) {
             (Some(tp), Some(zrtt), Some(ap)) => Ok((tp, zrtt, ap)),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 
@@ -1040,7 +1245,7 @@ impl <'a> MessageReader<'a> {
     pub fn final_payload(&self) -> Result<&'a [u8], Error> {
         match self.message_type {
             HandshakeMessage::Final => return Ok(&[]),
-            HandshakeMessage::FinalPayload => {},
+            HandshakeMessage::FinalPayload => {}
             _ => return Err(Error::Internal),
         }
 
@@ -1048,11 +1253,15 @@ impl <'a> MessageReader<'a> {
         let mut final_payload = None;
 
         loop {
-            let Some((frame, payload, remaining)) = PayloadFrame::next_frame(frame_cursor, self.message_type, false)? else {
+            let Some((frame, payload, remaining)) =
+                PayloadFrame::next_frame(frame_cursor, self.message_type, false)?
+            else {
                 break;
             };
             match frame {
-                PayloadFrame::ApplicationPayload if final_payload.is_some() => return Err(Error::HandshakeFailed),
+                PayloadFrame::ApplicationPayload if final_payload.is_some() => {
+                    return Err(Error::HandshakeFailed)
+                }
                 PayloadFrame::ApplicationPayload => final_payload = Some(payload),
                 _ => {}
             }
@@ -1061,7 +1270,7 @@ impl <'a> MessageReader<'a> {
 
         match final_payload {
             Some(fp) => Ok(fp),
-            _ => Err(Error::HandshakeFailed)
+            _ => Err(Error::HandshakeFailed),
         }
     }
 }
@@ -1073,20 +1282,34 @@ fn write_preamble(buffer: &mut impl Buffer, preamble: &[u8]) -> Result<(), Error
     Ok(())
 }
 
-fn write_initiator_initial(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, transport_params: &[u8], driver: &mut impl HandshakeDriver, position: u8) -> Result<(), Error> {
+fn write_initiator_initial(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    transport_params: &[u8],
+    driver: &mut impl HandshakeDriver,
+    position: u8,
+) -> Result<(), Error> {
     let mut buffer = MaxLenBuffer::new(buffer, u16::MAX as usize)?;
     let (token_padding, tag_padding) = noise.next_message_layout()?;
     buffer.push(HandshakeMessage::Initial as u8)?;
     insert_padding(&mut buffer, token_padding)?;
     buffer.push(HandshakeVersion::Version1.id())?;
-    insert_varlen_frame(&mut buffer, PayloadFrame::TransportParameters, transport_params)?;
+    insert_varlen_frame(
+        &mut buffer,
+        PayloadFrame::TransportParameters,
+        transport_params,
+    )?;
     insert_application_payload(&mut buffer, noise, driver, Some(position))?;
     insert_padding(&mut buffer, tag_padding)?;
     noise.write_message_in_place(&mut buffer.as_mut()[1..])?;
     Ok(())
 }
 
-fn write_responder_initial(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, deferred_payload_hash: &[u8]) -> Result<(), Error> {
+fn write_responder_initial(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    deferred_payload_hash: &[u8],
+) -> Result<(), Error> {
     let mut buffer = MaxLenBuffer::new(buffer, u16::MAX as usize)?;
     let (token_padding, tag_padding) = noise.next_message_layout()?;
     buffer.push(HandshakeMessage::Initial as u8)?;
@@ -1099,11 +1322,22 @@ fn write_responder_initial(buffer: &mut impl Buffer, noise: &mut impl NoiseHands
     Ok(())
 }
 
-fn write_responder_deferred_payload(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, transport_params: &[u8], zero_rtt_accepted: bool, driver: &mut impl HandshakeDriver, position: u8) -> Result<(), Error> {
+fn write_responder_deferred_payload(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    transport_params: &[u8],
+    zero_rtt_accepted: bool,
+    driver: &mut impl HandshakeDriver,
+    position: u8,
+) -> Result<(), Error> {
     let mut buffer = MaxLenBuffer::new(buffer, u16::MAX as usize)?;
     buffer.push(HandshakeMessage::DeferredPayload as u8)?;
     buffer.push(HandshakeVersion::Version1.id())?;
-    insert_varlen_frame(&mut buffer, PayloadFrame::TransportParameters, transport_params)?;
+    insert_varlen_frame(
+        &mut buffer,
+        PayloadFrame::TransportParameters,
+        transport_params,
+    )?;
     if zero_rtt_accepted {
         buffer.push(PayloadFrame::ZeroRttAccepted as u8)?;
     }
@@ -1111,7 +1345,12 @@ fn write_responder_deferred_payload(buffer: &mut impl Buffer, noise: &mut impl N
     Ok(())
 }
 
-fn write_noise(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, driver: &mut impl HandshakeDriver, position: u8) -> Result<(), Error> {
+fn write_noise(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    driver: &mut impl HandshakeDriver,
+    position: u8,
+) -> Result<(), Error> {
     let mut buffer = MaxLenBuffer::new(buffer, u16::MAX as usize)?;
     let (token_padding, tag_padding) = noise.next_message_layout()?;
     buffer.push(HandshakeMessage::Noise as u8)?;
@@ -1125,7 +1364,11 @@ fn write_noise(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, driver
     Ok(())
 }
 
-fn write_final(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, driver: &mut impl HandshakeDriver) -> Result<(), Error> {
+fn write_final(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    driver: &mut impl HandshakeDriver,
+) -> Result<(), Error> {
     let mut buffer = MaxLenBuffer::new(buffer, u16::MAX as usize)?;
     let mut buffer = AppendOnlyBuffer::new(&mut buffer);
     buffer.push(HandshakeMessage::FinalPayload as u8)?;
@@ -1140,14 +1383,23 @@ fn write_final(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, driver
     Ok(())
 }
 
-fn insert_varlen_frame(buffer: &mut impl Buffer, frame: PayloadFrame, payload: &[u8]) -> Result<(), Error> {
+fn insert_varlen_frame(
+    buffer: &mut impl Buffer,
+    frame: PayloadFrame,
+    payload: &[u8],
+) -> Result<(), Error> {
     buffer.push(frame as u8)?;
     let mut len_buffer = VarLengthPrefixBuffer::new(buffer, payload.len())?;
     len_buffer.extend_from_slice(payload)?;
     Ok(())
 }
 
-fn insert_application_payload(buffer: &mut impl Buffer, noise: &mut impl NoiseHandshake, driver: &mut impl HandshakeDriver, position: Option<u8>) -> Result<(), Error> {
+fn insert_application_payload(
+    buffer: &mut impl Buffer,
+    noise: &mut impl NoiseHandshake,
+    driver: &mut impl HandshakeDriver,
+    position: Option<u8>,
+) -> Result<(), Error> {
     let mut buffer = AppendOnlyBuffer::new(buffer);
     buffer.push(PayloadFrame::ApplicationPayload as u8)?;
     let mut noise_wrapper = NoiseHandshakeWrapper::wrap_payload(noise, position, None);

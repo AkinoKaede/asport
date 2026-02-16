@@ -1,12 +1,12 @@
 //! The 'xk_handshake` example sets up two bidirectional endpoints
 //! secured with a Noise XK handshake.
-//! 
+//!
 //! This kind of configuration may be useful for peer-to-peer
 //! applications and shows how to use the `HandshakeBuilder's`
 //! `with_server_name_as_remote_public()` functionality. This allows
 //! the public key of the peer to be supplied as a Base64 string in the
 //! `server_name` argument for outgoing connections.
-//! 
+//!
 
 use std::net::{SocketAddr, UdpSocket};
 
@@ -16,15 +16,11 @@ use quinn::{Endpoint, VarInt};
 use rand_core::OsRng;
 
 use quinn_hyphae::{
-    HandshakeBuilder,
-    HyphaePeerIdentity,
-    RustCryptoBackend,
-    helper::hyphae_bidirectional_endpoint, 
+    helper::hyphae_bidirectional_endpoint, HandshakeBuilder, HyphaePeerIdentity, RustCryptoBackend,
 };
 
 #[tokio::main]
 async fn main() -> Result<()> {
-
     let (endpoint_1, pubkey_1) = create_endpoint("Foo")?;
     let (endpoint_2, pubkey_2) = create_endpoint("Bar")?;
 
@@ -49,15 +45,17 @@ fn create_endpoint(name: &str) -> Result<(Endpoint, String)> {
 
     let socket = UdpSocket::bind("127.0.0.1:0")?;
 
-    let crypto_config =
-        HandshakeBuilder::new("Noise_XK_25519_ChaChaPoly_BLAKE2s")
+    let crypto_config = HandshakeBuilder::new("Noise_XK_25519_ChaChaPoly_BLAKE2s")
         .with_static_key(&secret_key)
         .with_server_name_as_remote_public()
         .build(RustCryptoBackend)?;
 
     let endpoint = hyphae_bidirectional_endpoint(crypto_config, None, socket)?;
 
-    println!("{name}: Listening on {} as '{public_key}'", endpoint.local_addr()?);
+    println!(
+        "{name}: Listening on {} as '{public_key}'",
+        endpoint.local_addr()?
+    );
 
     Ok((endpoint, public_key))
 }
@@ -72,8 +70,15 @@ async fn connect(name: &str, endpoint: Endpoint, addr: SocketAddr, pubkey: &str)
 async fn accept_connection(name: &str, endpoint: Endpoint) -> Result<()> {
     if let Some(incoming) = endpoint.accept().await {
         let conn = incoming.accept()?.await?;
-        let id = conn.peer_identity().unwrap().downcast::<HyphaePeerIdentity>().unwrap();
-        println!("{name}: Accepted connection from '{}'",  Base64::encode_string(&id.remote_public.unwrap()));
+        let id = conn
+            .peer_identity()
+            .unwrap()
+            .downcast::<HyphaePeerIdentity>()
+            .unwrap();
+        println!(
+            "{name}: Accepted connection from '{}'",
+            Base64::encode_string(&id.remote_public.unwrap())
+        );
         conn.closed().await;
     }
     Ok(())

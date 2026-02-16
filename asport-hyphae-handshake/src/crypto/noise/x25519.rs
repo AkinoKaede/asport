@@ -7,7 +7,7 @@ use crate::crypto::CryptoError;
 const X25519_BYTES: usize = 32;
 
 #[derive(Default, Zeroize, ZeroizeOnDrop)]
-pub struct SecretKey ([u8; X25519_BYTES]);
+pub struct SecretKey([u8; X25519_BYTES]);
 
 impl SecretKey {
     pub const SIZE: usize = X25519_BYTES;
@@ -44,12 +44,14 @@ impl TryFrom<&[u8]> for SecretKey {
     type Error = CryptoError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Ok(Self(value.try_into().map_err(|_| CryptoError::InvalidKeySize)?))
+        Ok(Self(
+            value.try_into().map_err(|_| CryptoError::InvalidKeySize)?,
+        ))
     }
 }
 
 #[derive(Clone, Default, Zeroize)]
-pub struct PublicKey (MontgomeryPoint);
+pub struct PublicKey(MontgomeryPoint);
 
 impl PublicKey {
     pub const SIZE: usize = X25519_BYTES;
@@ -59,7 +61,9 @@ impl TryFrom<&[u8]> for PublicKey {
     type Error = CryptoError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Ok(Self(MontgomeryPoint(value.try_into().map_err(|_| CryptoError::InvalidKeySize)?)))
+        Ok(Self(MontgomeryPoint(
+            value.try_into().map_err(|_| CryptoError::InvalidKeySize)?,
+        )))
     }
 }
 
@@ -70,7 +74,7 @@ impl AsRef<[u8]> for PublicKey {
 }
 
 #[derive(Default, Zeroize, ZeroizeOnDrop)]
-pub(crate) struct SharedSecret (MontgomeryPoint);
+pub(crate) struct SharedSecret(MontgomeryPoint);
 
 impl AsRef<[u8]> for SharedSecret {
     fn as_ref(&self) -> &[u8] {

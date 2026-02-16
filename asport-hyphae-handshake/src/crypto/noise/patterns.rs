@@ -40,21 +40,18 @@ impl HandshakePattern {
         self.handshake_desc().name
     }
 
-    
     /// Returns true if this handshake authenticates with long-term keys
     /// for the (initiator, responder).
     pub fn is_authenticating(self) -> (bool, bool) {
         let init_auth = match self {
-            HandshakePattern::NN |
-            HandshakePattern::NK |
-            HandshakePattern::NX => false,
+            HandshakePattern::NN | HandshakePattern::NK | HandshakePattern::NX => false,
             _ => true,
         };
         let resp_auth = match self {
-            HandshakePattern::NN |
-            HandshakePattern::KN |
-            HandshakePattern::XN |
-            HandshakePattern::IN => false,
+            HandshakePattern::NN
+            | HandshakePattern::KN
+            | HandshakePattern::XN
+            | HandshakePattern::IN => false,
             _ => true,
         };
         (init_auth, resp_auth)
@@ -62,25 +59,33 @@ impl HandshakePattern {
 }
 
 pub(crate) const ALL_HANDSHAKE_PATTERNS: &'static [HandshakePattern] = &[
-    HandshakePattern::NN, HandshakePattern::NK, HandshakePattern::NX,
-    HandshakePattern::KN, HandshakePattern::KK, HandshakePattern::KX,
-    HandshakePattern::XN, HandshakePattern::XK, HandshakePattern::XX,
-    HandshakePattern::IN, HandshakePattern::IK, HandshakePattern::IX,
+    HandshakePattern::NN,
+    HandshakePattern::NK,
+    HandshakePattern::NX,
+    HandshakePattern::KN,
+    HandshakePattern::KK,
+    HandshakePattern::KX,
+    HandshakePattern::XN,
+    HandshakePattern::XK,
+    HandshakePattern::XX,
+    HandshakePattern::IN,
+    HandshakePattern::IK,
+    HandshakePattern::IX,
 ];
 
 #[derive(Clone, Copy, Debug)]
 pub enum HandshakeModifier {
     /// Hybrid Forward Security
-    /// 
+    ///
     /// See:
     /// https://github.com/noiseprotocol/noise_hfs_spec/blob/master/output/noise_hfs.pdf
     Hfs,
 
     /// Pre-shared Symmetric Key
-    /// 
+    ///
     /// See:
     /// https://noiseprotocol.org/noise.html#pre-shared-symmetric-keys
-    Psk (PskPosition),
+    Psk(PskPosition),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,8 +108,8 @@ impl Modifiers {
     const PSK_2_BIT: u8 = 0x04;
     const PSK_3_BIT: u8 = 0x08;
     const PSK_4_BIT: u8 = 0x10;
-    const HFS_BIT:   u8 = 0x20;
-    const PSK_ANY:   u8 = 0x1F;
+    const HFS_BIT: u8 = 0x20;
+    const PSK_ANY: u8 = 0x1F;
 
     fn bit(modifier: HandshakeModifier) -> u8 {
         match modifier {
@@ -168,7 +173,7 @@ impl HandshakeParams {
     pub fn has_modifier_psk(&self, position: Option<PskPosition>) -> bool {
         match position {
             Some(p) => self.modifiers.has(HandshakeModifier::Psk(p)),
-            None => self.modifiers.has_psk()
+            None => self.modifiers.has_psk(),
         }
     }
 
@@ -187,19 +192,26 @@ impl HandshakeParams {
                 }
                 false
             })
-
     }
 
     pub(crate) fn message_count(&self) -> usize {
         self.message_iter().count()
     }
-    
-    pub(crate) fn message_token_iter(&self, pattern_pos: usize) -> Result<impl Iterator<Item = Token>, CryptoError> {
+
+    pub(crate) fn message_token_iter(
+        &self,
+        pattern_pos: usize,
+    ) -> Result<impl Iterator<Item = Token>, CryptoError> {
         let modifiers = self.modifiers;
         self.message_iter()
             .nth(pattern_pos)
             .ok_or(CryptoError::Internal)
-            .map(move |message_tokens| message_tokens.iter().copied().filter(move |token| token.used_with_modifiers(modifiers)))
+            .map(move |message_tokens| {
+                message_tokens
+                    .iter()
+                    .copied()
+                    .filter(move |token| token.used_with_modifiers(modifiers))
+            })
     }
 }
 
@@ -207,19 +219,18 @@ impl FromStr for HandshakeParams {
     type Err = CryptoError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let modifiers_start_at = s.find(|c| {
-            match c {
+        let modifiers_start_at = s
+            .find(|c| match c {
                 'A'..='Z' => false,
                 '0'..='9' => false,
                 _ => true,
-            }
-        }).unwrap_or(s.len());
+            })
+            .unwrap_or(s.len());
 
         let handshake_pattern_s = &s[0..modifiers_start_at];
         let handshake_modifiers_s = &s[modifiers_start_at..];
 
-        let pattern =
-            ALL_HANDSHAKE_PATTERNS
+        let pattern = ALL_HANDSHAKE_PATTERNS
             .iter()
             .find(|pattern| pattern.handshake_desc().name == handshake_pattern_s)
             .ok_or(CryptoError::InvalidProtocol)?
@@ -233,7 +244,9 @@ impl FromStr for HandshakeParams {
 }
 
 /// Parse a Noise protocol name into `(HandshakeParams, diffie_hellman: &str, aead: &str, hash: &str)`.
-pub(crate) fn parse_protocol_name(protocol_name: &str) -> Result<(HandshakeParams, &str, &str, &str), CryptoError> {
+pub(crate) fn parse_protocol_name(
+    protocol_name: &str,
+) -> Result<(HandshakeParams, &str, &str, &str), CryptoError> {
     let mut split = protocol_name.split('_');
     let prefix = split.next().ok_or(CryptoError::InvalidProtocol)?;
     if prefix != "Noise" {
@@ -258,7 +271,7 @@ pub(crate) enum Token {
     DhES,
     DhSE,
     DhSS,
-    Psk (PskPosition),
+    Psk(PskPosition),
 }
 
 impl Token {
@@ -288,7 +301,11 @@ const NN_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
         &[Token::E, Token::DhEE, Token::Psk(PskPosition::Psk2)],
     ],
 };
@@ -298,7 +315,12 @@ const NK_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::S,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::DhES, Token::Psk(PskPosition::Psk1)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk1),
+        ],
         &[Token::E, Token::DhEE, Token::Psk(PskPosition::Psk2)],
     ],
 };
@@ -308,8 +330,18 @@ const NX_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::S, Token::DhES, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::S,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -318,8 +350,17 @@ const KN_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::S,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -328,8 +369,19 @@ const KK_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::S,
     pre_message_resp: PreMessageTokens::S,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::DhES, Token::DhSS, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::DhES,
+            Token::DhSS,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -338,8 +390,19 @@ const KX_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::S,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::S, Token::DhES, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::S,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -348,9 +411,13 @@ const XN_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
         &[Token::E, Token::DhEE, Token::Psk(PskPosition::Psk2)],
-        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)]
+        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)],
     ],
 };
 
@@ -359,9 +426,14 @@ const XK_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::S,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::DhES, Token::Psk(PskPosition::Psk1)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk1),
+        ],
         &[Token::E, Token::DhEE, Token::Psk(PskPosition::Psk2)],
-        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)]
+        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)],
     ],
 };
 
@@ -370,20 +442,39 @@ const XX_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::S, Token::DhES, Token::Psk(PskPosition::Psk2)],
-        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)]
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::S,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk2),
+        ],
+        &[Token::S, Token::DhSE, Token::Psk(PskPosition::Psk3)],
     ],
 };
-
 
 const IN_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     name: "IN",
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::S, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::S,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -392,8 +483,20 @@ const IK_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::S,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::DhES, Token::S, Token::DhSS, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::DhES,
+            Token::S,
+            Token::DhSS,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };
 
@@ -402,7 +505,19 @@ const IX_HANDSHAKE: HandshakePatternDesc = HandshakePatternDesc {
     pre_message_init: PreMessageTokens::Empty,
     pre_message_resp: PreMessageTokens::Empty,
     messages: &[
-        &[Token::Psk(PskPosition::Psk0), Token::E, Token::S, Token::Psk(PskPosition::Psk1)],
-        &[Token::E, Token::DhEE, Token::DhSE, Token::S, Token::DhES, Token::Psk(PskPosition::Psk2)],
+        &[
+            Token::Psk(PskPosition::Psk0),
+            Token::E,
+            Token::S,
+            Token::Psk(PskPosition::Psk1),
+        ],
+        &[
+            Token::E,
+            Token::DhEE,
+            Token::DhSE,
+            Token::S,
+            Token::DhES,
+            Token::Psk(PskPosition::Psk2),
+        ],
     ],
 };

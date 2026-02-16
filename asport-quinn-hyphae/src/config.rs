@@ -1,21 +1,31 @@
 //! Implementation of `quinn::crypto::ClientConfig` and `ServerConfig`
 //! for Hyphae `HandshakeConfig`.
-//! 
+//!
 
 use std::sync::Arc;
 
-use hyphae_handshake::{crypto::{InitialCrypto, SymmetricKey, SyncCryptoBackend, TransportCrypto, HYPHAE_AEAD_TAG_LEN}, customization::SyncHandshakeConfig, handshake::HandshakeVersion, quic::{HYPHAE_H_V1_QUIC_V1_VERSION, QUIC_V1_TRANSPORT_LABEL}};
+use hyphae_handshake::{
+    crypto::{
+        InitialCrypto, SymmetricKey, SyncCryptoBackend, TransportCrypto, HYPHAE_AEAD_TAG_LEN,
+    },
+    customization::SyncHandshakeConfig,
+    handshake::HandshakeVersion,
+    quic::{HYPHAE_H_V1_QUIC_V1_VERSION, QUIC_V1_TRANSPORT_LABEL},
+};
 use quinn_proto::{crypto, transport_parameters::TransportParameters, ConnectError, ConnectionId};
 
-use crate::{session::HyphaeSession, sessionkeys::initial_keys, util::HandshakeMessageFramer, customization::QuinnHandshakeData};
+use crate::{
+    customization::QuinnHandshakeData, session::HyphaeSession, sessionkeys::initial_keys,
+    util::HandshakeMessageFramer,
+};
 
 /// Hyphae `HandshakeConfig` wrapper for Quinn crypto configuration.
-/// 
-/// `HyphaeCryptoConfig` wraps a Hyphae `HandshakeConfig` and 
+///
+/// `HyphaeCryptoConfig` wraps a Hyphae `HandshakeConfig` and
 /// `CryptoBackend`, implementing `quinn::crypto::ClientConfig` and
 /// `quinn::crypto::ServerConfig` to set up Quinn endpoints and
 /// connections.
-/// 
+///
 /// `HandshakeBuilder::build()` creates this type for you. You only need
 /// to use this directly if you implement your own `HandshakeConfig`.
 pub struct HyphaeCryptoConfig<T, B>
@@ -28,14 +38,14 @@ where
     pub(crate) crypto: Arc<B>,
 }
 
-impl <T, B> HyphaeCryptoConfig<T, B>
+impl<T, B> HyphaeCryptoConfig<T, B>
 where
     T: SyncHandshakeConfig,
     T::Driver: QuinnHandshakeData,
     B: SyncCryptoBackend,
 {
     /// Create a new `HandshakeConfig` wrapper for use with Quinn.
-    /// 
+    ///
     /// Both `handshake_config` and `crypto_backend` must be able to be
     /// shared across threads. Additionally, the handshake driver for
     /// the configuration must implement `QuinnHandshakeData`.
@@ -52,7 +62,7 @@ where
     }
 }
 
-impl <T, B> crypto::ClientConfig for HyphaeCryptoConfig<T, B>
+impl<T, B> crypto::ClientConfig for HyphaeCryptoConfig<T, B>
 where
     T: SyncHandshakeConfig,
     T::Driver: QuinnHandshakeData,
@@ -87,7 +97,7 @@ where
     }
 }
 
-impl <T, B> crypto::ServerConfig for HyphaeCryptoConfig<T, B>
+impl<T, B> crypto::ServerConfig for HyphaeCryptoConfig<T, B>
 where
     T: SyncHandshakeConfig,
     T::Driver: QuinnHandshakeData,
@@ -102,10 +112,21 @@ where
             return Err(crypto::UnsupportedVersion);
         }
 
-        Ok(initial_keys(false, HandshakeVersion::Version1, QUIC_V1_TRANSPORT_LABEL, &dst_cid, &self.crypto.initial_crypto()))
+        Ok(initial_keys(
+            false,
+            HandshakeVersion::Version1,
+            QUIC_V1_TRANSPORT_LABEL,
+            &dst_cid,
+            &self.crypto.initial_crypto(),
+        ))
     }
 
-    fn retry_tag(&self, version: u32, orig_dst_cid: &ConnectionId, packet: &[u8]) -> [u8; HYPHAE_AEAD_TAG_LEN] {
+    fn retry_tag(
+        &self,
+        version: u32,
+        orig_dst_cid: &ConnectionId,
+        packet: &[u8],
+    ) -> [u8; HYPHAE_AEAD_TAG_LEN] {
         if version != HYPHAE_H_V1_QUIC_V1_VERSION {
             // Quinn cannot have initial keys for an unknown version.
             unreachable!();
@@ -113,13 +134,20 @@ where
 
         let initial_crypto = self.crypto.initial_crypto();
         let mut retry_key = SymmetricKey::default();
-        initial_crypto.retry_tag_secret(HandshakeVersion::Version1, QUIC_V1_TRANSPORT_LABEL, &orig_dst_cid, &mut retry_key)
+        initial_crypto
+            .retry_tag_secret(
+                HandshakeVersion::Version1,
+                QUIC_V1_TRANSPORT_LABEL,
+                &orig_dst_cid,
+                &mut retry_key,
+            )
             .expect("initial crypto can generate retry secret");
 
         let mut packet_in_place = Vec::with_capacity(packet.len() + HYPHAE_AEAD_TAG_LEN);
         packet_in_place.extend_from_slice(packet);
         packet_in_place.extend_from_slice(&[0u8; HYPHAE_AEAD_TAG_LEN]);
-        initial_crypto.encrypt_in_place(&retry_key, 0, b"", &mut packet_in_place)
+        initial_crypto
+            .encrypt_in_place(&retry_key, 0, b"", &mut packet_in_place)
             .expect("initial crypto can encrypt retry packet");
 
         packet_in_place[packet.len()..].try_into().unwrap()

@@ -1,3 +1,26 @@
+#![allow(
+    dead_code,
+    unused_assignments,
+    clippy::comparison_to_empty,
+    clippy::collapsible_else_if,
+    clippy::expect_fun_call,
+    clippy::get_first,
+    clippy::len_without_is_empty,
+    clippy::manual_inspect,
+    clippy::map_identity,
+    clippy::match_like_matches_macro,
+    clippy::needless_borrow,
+    clippy::needless_return,
+    clippy::option_as_ref_deref,
+    clippy::possible_missing_else,
+    clippy::redundant_pattern_matching,
+    clippy::redundant_static_lifetimes,
+    clippy::type_complexity,
+    clippy::unnecessary_cast,
+    clippy::while_let_on_iterator
+)]
+#![allow(rustdoc::bare_urls)]
+
 pub mod buffer;
 #[cfg(test)]
 pub(crate) mod builder;

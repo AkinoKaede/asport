@@ -1,15 +1,15 @@
+#![allow(clippy::iter_skip_next, clippy::redundant_static_lifetimes)]
+
 use std::{env, net::UdpSocket, process};
 
 use anyhow::Result;
 use base64ct::Encoding;
-use rand_core::OsRng;
 use quinn::Endpoint;
+use rand_core::OsRng;
 
 use quinn_hyphae::{
-    HandshakeBuilder,
-    RustCryptoBackend,
-    HyphaePeerIdentity,
-    helper::{hyphae_client_endpoint, hyphae_server_endpoint}
+    helper::{hyphae_client_endpoint, hyphae_server_endpoint},
+    HandshakeBuilder, HyphaePeerIdentity, RustCryptoBackend,
 };
 
 const SERVER_ADDR: &'static str = "127.0.0.1:5777";
@@ -25,8 +25,7 @@ async fn main() -> Result<()> {
 
     let noise_protocol = "Noise_XX_25519_ChaChaPoly_BLAKE2s";
 
-    let crypto_config = 
-        HandshakeBuilder::new(noise_protocol)
+    let crypto_config = HandshakeBuilder::new(noise_protocol)
         .with_static_key(&secret_key)
         .build(RustCryptoBackend)
         .unwrap();
@@ -36,12 +35,15 @@ async fn main() -> Result<()> {
         false => UdpSocket::bind(CLIENT_ADDR).unwrap(),
     };
 
-    println!("Endpoint on {:?} with public key {:?}", socket.local_addr().unwrap(), public_key_b64);
+    println!(
+        "Endpoint on {:?} with public key {:?}",
+        socket.local_addr().unwrap(),
+        public_key_b64
+    );
 
     if is_server {
         let endpoint = hyphae_server_endpoint(crypto_config, None, socket).unwrap();
         run_echo_server(endpoint).await?;
-
     } else {
         let endpoint = hyphae_client_endpoint(crypto_config, None, socket).unwrap();
         echo_client(endpoint, SERVER_ADDR, "hello quinn-hyphae!".into()).await?;
@@ -73,7 +75,11 @@ async fn run_echo_server(endpoint: Endpoint) -> Result<()> {
             let conn = incoming.await?;
 
             let peer_addr = conn.remote_address();
-            let peer_id = conn.peer_identity().unwrap().downcast::<HyphaePeerIdentity>().unwrap();
+            let peer_id = conn
+                .peer_identity()
+                .unwrap()
+                .downcast::<HyphaePeerIdentity>()
+                .unwrap();
             println!("Connection from {peer_addr}");
             println!("Peer Identity: {:?}", peer_id);
 
@@ -99,7 +105,11 @@ async fn run_echo_server(endpoint: Endpoint) -> Result<()> {
 async fn echo_client(endpoint: Endpoint, server_addr: &str, echo: String) -> Result<()> {
     let conn = endpoint.connect(server_addr.parse().unwrap(), "")?.await?;
 
-    let peer_id = conn.peer_identity().unwrap().downcast::<HyphaePeerIdentity>().unwrap();
+    let peer_id = conn
+        .peer_identity()
+        .unwrap()
+        .downcast::<HyphaePeerIdentity>()
+        .unwrap();
     println!("Connected to {:?}", conn.remote_address());
     println!("  Peer Identity: {:?}", peer_id);
 
@@ -113,6 +123,6 @@ async fn echo_client(endpoint: Endpoint, server_addr: &str, echo: String) -> Res
 
     let echo_recv = recv_stream.read_to_end(echo_bytes.len()).await?;
     println!("  Received '{}'", String::from_utf8_lossy(&echo_recv));
-    
+
     Ok(())
 }

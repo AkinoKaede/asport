@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use quinn_proto::{VarInt, coding::Codec as _};
+use quinn_proto::{coding::Codec as _, VarInt};
 
 #[derive(Debug)]
 pub struct InvalidHandshakeMessage;
@@ -20,17 +20,21 @@ impl HandshakeMessageFramer {
             match &mut self.message_in_progress {
                 None => {
                     let next_message_len: u64 = VarInt::decode(&mut buffer)
-                        .map_err(|_| InvalidHandshakeMessage)?.into();
-                    if next_message_len > Self::MESSAGE_LEN_MAX as u64 || self.messages_ready.len() > Self::MESSAGE_READY_MAX {
+                        .map_err(|_| InvalidHandshakeMessage)?
+                        .into();
+                    if next_message_len > Self::MESSAGE_LEN_MAX as u64
+                        || self.messages_ready.len() > Self::MESSAGE_READY_MAX
+                    {
                         return Err(InvalidHandshakeMessage);
                     }
                     if next_message_len == 0 {
                         self.messages_ready.push_back(Vec::new());
                     } else {
                         let next_message_len = next_message_len as usize;
-                        self.message_in_progress = Some((next_message_len, Vec::with_capacity(next_message_len)));
+                        self.message_in_progress =
+                            Some((next_message_len, Vec::with_capacity(next_message_len)));
                     }
-                },
+                }
 
                 Some((bytes_remaining, message)) => {
                     let take_amt = (*bytes_remaining).min(buffer.len());
@@ -38,10 +42,11 @@ impl HandshakeMessageFramer {
                     message.extend_from_slice(take);
                     *bytes_remaining -= take_amt;
                     if *bytes_remaining == 0 {
-                        self.messages_ready.push_back(self.message_in_progress.take().unwrap().1)
+                        self.messages_ready
+                            .push_back(self.message_in_progress.take().unwrap().1)
                     }
                     buffer = rem;
-                },
+                }
             }
         }
 
@@ -56,15 +61,16 @@ impl HandshakeMessageFramer {
         self.messages_ready.pop_front()
     }
 
-    pub fn write_frame(buffer: &mut Vec<u8>, message: &[u8]) -> Result<(), InvalidHandshakeMessage> {
+    pub fn write_frame(
+        buffer: &mut Vec<u8>,
+        message: &[u8],
+    ) -> Result<(), InvalidHandshakeMessage> {
         if message.len() > Self::MESSAGE_LEN_MAX {
             return Err(InvalidHandshakeMessage);
         }
-        let len_var = VarInt::try_from(message.len())
-            .map_err(|_| InvalidHandshakeMessage)?;
+        let len_var = VarInt::try_from(message.len()).map_err(|_| InvalidHandshakeMessage)?;
         len_var.encode(buffer);
         buffer.extend_from_slice(message);
         Ok(())
     }
 }
-

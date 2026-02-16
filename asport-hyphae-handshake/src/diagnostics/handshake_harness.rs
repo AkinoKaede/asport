@@ -1,8 +1,13 @@
-use crate::{Error, crypto::{CryptoBackend, SymmetricKey}, customization::HandshakeConfig, handshake::{AllocHyphaeHandshake, HandshakeVersion}};
+use crate::{
+    crypto::{CryptoBackend, SymmetricKey},
+    customization::HandshakeConfig,
+    handshake::{AllocHyphaeHandshake, HandshakeVersion},
+    Error,
+};
 
 const HARNESS_TRANSPORT_LABEL: &[u8] = b"harness";
 
-pub fn alloc_handshake_harness<I, IB, R, RB> (
+pub fn alloc_handshake_harness<I, IB, R, RB>(
     init_handshake_config: &I,
     init_crypto: IB,
     resp_handshake_config: &R,
@@ -20,10 +25,24 @@ where
     let init_params = b"init_transport_params";
     let resp_params = b"resp_transport_params";
 
-    let mut init_handshake = AllocHyphaeHandshake::new_initiator(init_handshake_config, &init_crypto, HandshakeVersion::Version1, HARNESS_TRANSPORT_LABEL, init_params.to_vec(), server_name)?;
+    let mut init_handshake = AllocHyphaeHandshake::new_initiator(
+        init_handshake_config,
+        &init_crypto,
+        HandshakeVersion::Version1,
+        HARNESS_TRANSPORT_LABEL,
+        init_params.to_vec(),
+        server_name,
+    )?;
     init_handshake.write_message(&mut buffer)?;
 
-    let mut resp_handshake = AllocHyphaeHandshake::new_responder(resp_handshake_config, &resp_crypto, HandshakeVersion::Version1, HARNESS_TRANSPORT_LABEL, resp_params.to_vec(), buffer)?;
+    let mut resp_handshake = AllocHyphaeHandshake::new_responder(
+        resp_handshake_config,
+        &resp_crypto,
+        HandshakeVersion::Version1,
+        HARNESS_TRANSPORT_LABEL,
+        resp_params.to_vec(),
+        buffer,
+    )?;
 
     loop {
         if init_handshake.is_handshake_finalized() {
@@ -48,7 +67,7 @@ where
         } else {
             resp_handshake.write_message(&mut buffer)?;
             if buffer.is_empty() {
-                return Err(Error::Internal) // Deadlock
+                return Err(Error::Internal); // Deadlock
             }
             init_handshake.read_message(buffer)?;
         }
@@ -63,11 +82,11 @@ where
     }
 
     if !resp_handshake.is_handshake_finalized() {
-        return Err(Error::Internal)
+        return Err(Error::Internal);
     }
 
     if init_handshake.peer_params().is_none() || resp_handshake.peer_params().is_none() {
-        return Err(Error::Internal)
+        return Err(Error::Internal);
     }
 
     Ok(())
@@ -79,7 +98,16 @@ pub mod tests {
 
     use rand_core::OsRng;
 
-    use crate::{buffer::Buffer, builder::HandshakeBuilder, crypto::{backends::rustcrypto::RustCryptoBackend, noise::patterns::HandshakePattern, SecretKeySetup}, customization::{HandshakeConfig, HandshakeDriver, HandshakeInfo, PayloadDriver}, Error};
+    use crate::{
+        buffer::Buffer,
+        builder::HandshakeBuilder,
+        crypto::{
+            backends::rustcrypto::RustCryptoBackend, noise::patterns::HandshakePattern,
+            SecretKeySetup,
+        },
+        customization::{HandshakeConfig, HandshakeDriver, HandshakeInfo, PayloadDriver},
+        Error,
+    };
 
     use super::alloc_handshake_harness;
 
@@ -121,14 +149,29 @@ pub mod tests {
             self.init_wrote_preamble = true;
         }
 
-        pub fn noise_payload(&mut self, initiator: bool, position: u8, handshake_finished: bool, prev_hash: &[u8], rs: Option<&[u8]>) {
+        pub fn noise_payload(
+            &mut self,
+            initiator: bool,
+            position: u8,
+            handshake_finished: bool,
+            prev_hash: &[u8],
+            rs: Option<&[u8]>,
+        ) {
             if self.handshake_finished {
                 panic!("handshake finished for more than one noise payload")
             }
 
             let (last_pos, hashes, rs_exp) = match initiator {
-                true => (&mut self.init_payloads, &mut self.init_message_hashes, &mut self.rs_from_resp),
-                false => (&mut self.resp_payloads, &mut self.resp_message_hashes, &mut self.rs_from_init),
+                true => (
+                    &mut self.init_payloads,
+                    &mut self.init_message_hashes,
+                    &mut self.rs_from_resp,
+                ),
+                false => (
+                    &mut self.resp_payloads,
+                    &mut self.resp_message_hashes,
+                    &mut self.rs_from_init,
+                ),
             };
 
             if *last_pos + 1 != position {
@@ -145,14 +188,27 @@ pub mod tests {
                     panic!("rs changed mid-handshake")
                 }
             }
-            
+
             self.handshake_finished = handshake_finished;
         }
 
-        pub fn recv_final_payload(&mut self, initiator: bool, final_hash: &[u8], rs: Option<&[u8]>) {
+        pub fn recv_final_payload(
+            &mut self,
+            initiator: bool,
+            final_hash: &[u8],
+            rs: Option<&[u8]>,
+        ) {
             let (done, side_final_hash, rs_exp) = match initiator {
-                true => (&mut self.init_recv_final, &mut self.init_final_hash, &mut self.rs_from_resp),
-                false => (&mut self.resp_recv_final, &mut self.resp_final_hash, &mut self.rs_from_init),
+                true => (
+                    &mut self.init_recv_final,
+                    &mut self.init_final_hash,
+                    &mut self.rs_from_resp,
+                ),
+                false => (
+                    &mut self.resp_recv_final,
+                    &mut self.resp_final_hash,
+                    &mut self.rs_from_init,
+                ),
             };
             if *done {
                 panic!("double recv finale, initiator: {initiator}");
@@ -165,7 +221,7 @@ pub mod tests {
                     panic!("rs changed mid-handshake")
                 }
             }
-            
+
             *done = true;
             *side_final_hash = Some(final_hash.to_vec());
         }
@@ -213,20 +269,24 @@ pub mod tests {
                 TestCase::ClearPayloadWriteBadFrame => {
                     preamble_buffer.clear();
                     preamble_buffer.push(0x50)?;
-                },
+                }
                 _ => {}
             }
             Ok(())
         }
-    
-        fn new_initiator(&self, _server_name: &str, noise_handshake: &mut impl HandshakeInfo) -> Result<Self::Driver, Error> {
+
+        fn new_initiator(
+            &self,
+            _server_name: &str,
+            noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<Self::Driver, Error> {
             let s_secret = RustCryptoBackend.new_secret_key(&mut OsRng);
             let s_public = RustCryptoBackend.public_key(&s_secret);
             let s = match self.handshake {
                 HandshakePattern::XX => {
                     self.tracker.borrow_mut().init_s_public = Some(s_public.to_vec());
                     Some(SecretKeySetup::Local(&s_secret))
-                },
+                }
                 _ => None,
             };
             noise_handshake.initialize(&mut OsRng, &self.protocol(), self.prologue(), s, None)?;
@@ -236,28 +296,32 @@ pub mod tests {
                 tracker: self.tracker.clone(),
             })
         }
-    
-        fn new_responder(&self, preamble: &[u8], noise_handshake: &mut impl HandshakeInfo) -> Result<Self::Driver, Error> {
+
+        fn new_responder(
+            &self,
+            preamble: &[u8],
+            noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<Self::Driver, Error> {
             match self.test {
                 TestCase::ClearPayloadWriteBadFrame => {
                     if preamble != b"\x50" {
                         panic!();
                     }
-                },
+                }
                 _ => {
                     if !preamble.is_empty() {
                         panic!();
                     }
-                },
+                }
             }
-            
+
             let s_secret = RustCryptoBackend.new_secret_key(&mut OsRng);
             let s_public = RustCryptoBackend.public_key(&s_secret);
             let s = match self.handshake {
                 HandshakePattern::XX => {
                     self.tracker.borrow_mut().resp_s_public = Some(s_public.to_vec());
                     Some(SecretKeySetup::Local(&s_secret))
-                },
+                }
                 _ => None,
             };
 
@@ -276,28 +340,40 @@ pub mod tests {
     }
 
     impl HandshakeDriver for TestHandshakeDriver {
-        fn write_final_payload(&mut self, payload_buffer: &mut impl Buffer, _noise_handshake: &mut impl HandshakeInfo) -> Result<(), Error> {
+        fn write_final_payload(
+            &mut self,
+            payload_buffer: &mut impl Buffer,
+            _noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<(), Error> {
             match self.test {
                 TestCase::ClearPayloadBuffers => payload_buffer.clear(),
                 TestCase::ClearPayloadWriteBadFrame => {
                     payload_buffer.clear();
                     payload_buffer.push(0x50)?;
-                },
+                }
                 _ => {}
             }
 
             Ok(())
         }
-    
-        fn read_final_payload(&mut self, payload: &[u8], noise_handshake: &mut impl HandshakeInfo) -> Result<(), Error> {
-            self.tracker.borrow_mut().recv_final_payload(noise_handshake.is_initiator(), noise_handshake.final_handshake_hash().unwrap(), noise_handshake.remote_public());
+
+        fn read_final_payload(
+            &mut self,
+            payload: &[u8],
+            noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<(), Error> {
+            self.tracker.borrow_mut().recv_final_payload(
+                noise_handshake.is_initiator(),
+                noise_handshake.final_handshake_hash().unwrap(),
+                noise_handshake.remote_public(),
+            );
 
             match self.test {
                 TestCase::ClearPayloadWriteBadFrame => {
                     if payload != b"\x50" {
                         panic!();
                     }
-                },
+                }
                 _ => {
                     if !payload.is_empty() {
                         panic!();
@@ -310,13 +386,17 @@ pub mod tests {
     }
 
     impl PayloadDriver for TestHandshakeDriver {
-        fn write_noise_payload(&mut self, payload_buffer: &mut impl Buffer, noise_handshake: &mut impl HandshakeInfo) -> Result<(), Error> {
+        fn write_noise_payload(
+            &mut self,
+            payload_buffer: &mut impl Buffer,
+            noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<(), Error> {
             self.tracker.borrow_mut().noise_payload(
-                noise_handshake.is_initiator(), 
-                noise_handshake.handshake_position().unwrap(), 
-                noise_handshake.is_finished(), 
+                noise_handshake.is_initiator(),
+                noise_handshake.handshake_position().unwrap(),
+                noise_handshake.is_finished(),
                 noise_handshake.prev_handshake_hash().unwrap(),
-                noise_handshake.remote_public()
+                noise_handshake.remote_public(),
             );
 
             match self.test {
@@ -324,25 +404,29 @@ pub mod tests {
                 TestCase::ClearPayloadWriteBadFrame => {
                     payload_buffer.clear();
                     payload_buffer.push(0x50)?;
-                },
+                }
                 TestCase::TooLargePayload => {
                     for _ in 0..65 {
                         payload_buffer.extend_from_slice(&[1u8; 1024])?;
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
 
             Ok(())
         }
-    
-        fn read_noise_payload(&mut self, payload: &[u8], noise_handshake: &mut impl HandshakeInfo) -> Result<(), Error> {
+
+        fn read_noise_payload(
+            &mut self,
+            payload: &[u8],
+            noise_handshake: &mut impl HandshakeInfo,
+        ) -> Result<(), Error> {
             self.tracker.borrow_mut().noise_payload(
-                noise_handshake.is_initiator(), 
-                noise_handshake.handshake_position().unwrap(), 
-                noise_handshake.is_finished(), 
+                noise_handshake.is_initiator(),
+                noise_handshake.handshake_position().unwrap(),
+                noise_handshake.is_finished(),
                 noise_handshake.prev_handshake_hash().unwrap(),
-                noise_handshake.remote_public()
+                noise_handshake.remote_public(),
             );
 
             match self.test {
@@ -350,8 +434,8 @@ pub mod tests {
                     if payload != b"\x50" {
                         panic!();
                     }
-                },
-                TestCase::TooLargePayload => {},
+                }
+                TestCase::TooLargePayload => {}
                 _ => {
                     if !payload.is_empty() {
                         panic!();
@@ -371,7 +455,13 @@ pub mod tests {
             tracker: tracker.clone(),
         };
 
-        let res = alloc_handshake_harness(&handshake_config, RustCryptoBackend, &handshake_config, RustCryptoBackend, "");
+        let res = alloc_handshake_harness(
+            &handshake_config,
+            RustCryptoBackend,
+            &handshake_config,
+            RustCryptoBackend,
+            "",
+        );
         if res.is_ok() {
             let expected_payloads = match pattern {
                 HandshakePattern::NN => 2,
@@ -389,17 +479,33 @@ pub mod tests {
         let patterns = &[/*HandshakePattern::NN,*/ HandshakePattern::XX];
 
         for pattern in patterns.iter().copied() {
-            test_handshake(TestCase::EmptyPayloads, pattern).expect(&format!("EmptyPayloads with {}", pattern.name()));
-            test_handshake(TestCase::ClearPayloadBuffers, pattern).expect(&format!("ClearPayloadBuffers with {}", pattern.name()));
-            test_handshake(TestCase::ClearPayloadWriteBadFrame, pattern).expect(&format!("ClearPayloadWriteBadFrame with {}", pattern.name()));
+            test_handshake(TestCase::EmptyPayloads, pattern)
+                .expect(&format!("EmptyPayloads with {}", pattern.name()));
+            test_handshake(TestCase::ClearPayloadBuffers, pattern)
+                .expect(&format!("ClearPayloadBuffers with {}", pattern.name()));
+            test_handshake(TestCase::ClearPayloadWriteBadFrame, pattern).expect(&format!(
+                "ClearPayloadWriteBadFrame with {}",
+                pattern.name()
+            ));
             assert!(test_handshake(TestCase::TooLargePayload, pattern).is_err());
         }
     }
 
     #[test]
     fn handshake_harness_alloc() {
-        let init_handshake_config = HandshakeBuilder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s").build().unwrap();
-        let resp_handshake_config = HandshakeBuilder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s").build().unwrap();
-        alloc_handshake_harness(&init_handshake_config, RustCryptoBackend, &resp_handshake_config, RustCryptoBackend, "").unwrap();
+        let init_handshake_config = HandshakeBuilder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s")
+            .build()
+            .unwrap();
+        let resp_handshake_config = HandshakeBuilder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s")
+            .build()
+            .unwrap();
+        alloc_handshake_harness(
+            &init_handshake_config,
+            RustCryptoBackend,
+            &resp_handshake_config,
+            RustCryptoBackend,
+            "",
+        )
+        .unwrap();
     }
 }

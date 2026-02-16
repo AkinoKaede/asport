@@ -1,5 +1,5 @@
 //! Buffer trait used by Hyphae's handshake customization traits.
-//! 
+//!
 
 use std::ops::Range;
 
@@ -7,7 +7,7 @@ use std::ops::Range;
 pub struct BufferFullError;
 
 /// Generic mutable byte buffer.
-/// 
+///
 /// This is essentially a scoped down (but safe) version of `BufMut`
 /// from the Bytes crate that has no dependency on `alloc`.
 pub trait Buffer: AsMut<[u8]> + AsRef<[u8]> {
@@ -61,7 +61,7 @@ pub(crate) struct AppendOnlyBuffer<'a, T: Buffer> {
     suffix_start: usize,
 }
 
-impl <'a, T: Buffer> AppendOnlyBuffer<'a, T> {
+impl<'a, T: Buffer> AppendOnlyBuffer<'a, T> {
     pub fn new(inner: &'a mut T) -> Self {
         Self {
             suffix_start: inner.len(),
@@ -70,7 +70,7 @@ impl <'a, T: Buffer> AppendOnlyBuffer<'a, T> {
     }
 }
 
-impl <T: Buffer> Buffer for AppendOnlyBuffer<'_, T> {
+impl<T: Buffer> Buffer for AppendOnlyBuffer<'_, T> {
     fn remaining(&self) -> usize {
         self.inner.remaining()
     }
@@ -92,17 +92,18 @@ impl <T: Buffer> Buffer for AppendOnlyBuffer<'_, T> {
     }
 
     fn clear_range(&mut self, range: Range<usize>) {
-        self.inner.clear_range(range.start + self.suffix_start..range.end + self.suffix_start);
+        self.inner
+            .clear_range(range.start + self.suffix_start..range.end + self.suffix_start);
     }
 }
 
-impl <T: Buffer> AsRef<[u8]> for AppendOnlyBuffer<'_, T> {
+impl<T: Buffer> AsRef<[u8]> for AppendOnlyBuffer<'_, T> {
     fn as_ref(&self) -> &[u8] {
         &self.inner.as_ref()[self.suffix_start..]
     }
 }
 
-impl <T: Buffer> AsMut<[u8]> for AppendOnlyBuffer<'_, T> {
+impl<T: Buffer> AsMut<[u8]> for AppendOnlyBuffer<'_, T> {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.inner.as_mut()[self.suffix_start..]
     }
@@ -115,24 +116,19 @@ pub(crate) struct MaxLenBuffer<'a, T: Buffer> {
     max_len: usize,
 }
 
-impl <'a, T: Buffer> MaxLenBuffer<'a, T> {
+impl<'a, T: Buffer> MaxLenBuffer<'a, T> {
     pub fn new(inner: &'a mut T, max_len: usize) -> Result<Self, BufferFullError> {
         if inner.len() <= max_len {
-            Ok(Self {
-                inner,
-                max_len
-            })
+            Ok(Self { inner, max_len })
         } else {
             Err(BufferFullError)
         }
     }
 }
 
-impl <T: Buffer> Buffer for MaxLenBuffer<'_, T> {
+impl<T: Buffer> Buffer for MaxLenBuffer<'_, T> {
     fn remaining(&self) -> usize {
-        self.inner
-            .remaining()
-            .min(self.max_len - self.len())
+        self.inner.remaining().min(self.max_len - self.len())
     }
 
     fn len(&self) -> usize {
@@ -164,13 +160,13 @@ impl <T: Buffer> Buffer for MaxLenBuffer<'_, T> {
     }
 }
 
-impl <T: Buffer> AsRef<[u8]> for MaxLenBuffer<'_, T> {
+impl<T: Buffer> AsRef<[u8]> for MaxLenBuffer<'_, T> {
     fn as_ref(&self) -> &[u8] {
         self.inner.as_ref()
     }
 }
 
-impl <T: Buffer> AsMut<[u8]> for MaxLenBuffer<'_, T> {
+impl<T: Buffer> AsMut<[u8]> for MaxLenBuffer<'_, T> {
     fn as_mut(&mut self) -> &mut [u8] {
         self.inner.as_mut()
     }
@@ -182,7 +178,7 @@ pub(crate) struct VarLengthPrefixBuffer<'a, T: Buffer> {
     inner: AppendOnlyBuffer<'a, T>,
 }
 
-impl <'a, T: Buffer> VarLengthPrefixBuffer<'a, T> {
+impl<'a, T: Buffer> VarLengthPrefixBuffer<'a, T> {
     pub fn new(inner: &'a mut T, expect_len: usize) -> Result<Self, BufferFullError> {
         let mut this = Self {
             inner: AppendOnlyBuffer::new(inner),
@@ -204,7 +200,9 @@ impl <'a, T: Buffer> VarLengthPrefixBuffer<'a, T> {
             for _ in 0..pad_by {
                 self.inner.push(0).unwrap(); // Already checked remaining.
             }
-            self.inner.as_mut().copy_within(cur_prefix_size.len()..orig_inner_len, min_prefix_size.len());
+            self.inner
+                .as_mut()
+                .copy_within(cur_prefix_size.len()..orig_inner_len, min_prefix_size.len());
         }
         self.inner.as_mut()[0] = min_prefix_size.msb();
         Ok(())
@@ -220,7 +218,7 @@ impl <'a, T: Buffer> VarLengthPrefixBuffer<'a, T> {
     }
 }
 
-impl <T: Buffer> Drop for VarLengthPrefixBuffer<'_, T> {
+impl<T: Buffer> Drop for VarLengthPrefixBuffer<'_, T> {
     fn drop(&mut self) {
         if self.inner.len() > 0 {
             self.finalize_prefix();
@@ -228,7 +226,7 @@ impl <T: Buffer> Drop for VarLengthPrefixBuffer<'_, T> {
     }
 }
 
-impl <T: Buffer> Buffer for VarLengthPrefixBuffer<'_, T> {
+impl<T: Buffer> Buffer for VarLengthPrefixBuffer<'_, T> {
     fn remaining(&self) -> usize {
         // TODO, this is the worst case, fix me
         self.inner.remaining().checked_sub(7).unwrap_or_default()
@@ -255,17 +253,18 @@ impl <T: Buffer> Buffer for VarLengthPrefixBuffer<'_, T> {
 
     fn clear_range(&mut self, range: Range<usize>) {
         let prefix_len = self.get_prefix_size().len();
-        self.inner.clear_range(range.start + prefix_len..range.end + prefix_len);
+        self.inner
+            .clear_range(range.start + prefix_len..range.end + prefix_len);
     }
 }
 
-impl <T: Buffer> AsRef<[u8]> for VarLengthPrefixBuffer<'_, T> {
+impl<T: Buffer> AsRef<[u8]> for VarLengthPrefixBuffer<'_, T> {
     fn as_ref(&self) -> &[u8] {
         &self.inner.as_ref()[self.get_prefix_size().len()..]
     }
 }
 
-impl <T: Buffer> AsMut<[u8]> for VarLengthPrefixBuffer<'_, T> {
+impl<T: Buffer> AsMut<[u8]> for VarLengthPrefixBuffer<'_, T> {
     fn as_mut(&mut self) -> &mut [u8] {
         let start = self.get_prefix_size().len();
         &mut self.inner.as_mut()[start..]
@@ -334,7 +333,7 @@ impl VarIntSize {
     }
 
     /// Write `value` in `QUIC VarInt` encoding into `buffer`.
-    /// 
+    ///
     /// Panics if buffer is not 1, 2, 4, or 8 bytes or if `value` cannot
     /// fit in a `VarInt` of `buffer.len()`.
     pub fn write_varint(value: u64, buffer: &mut [u8]) {
@@ -371,7 +370,7 @@ mod tests {
 
         let mut buffer = Vec::new();
         let mut varlen_prefix_buffer = VarLengthPrefixBuffer::new(&mut buffer, 0).unwrap();
-        varlen_prefix_buffer.extend_from_slice(&[1;64]).unwrap();
+        varlen_prefix_buffer.extend_from_slice(&[1; 64]).unwrap();
         drop(varlen_prefix_buffer);
         assert_eq!(buffer.len(), 66);
         assert_eq!(&buffer[0..2], &[0x40, 64]);
@@ -379,7 +378,7 @@ mod tests {
 
         let mut buffer = Vec::new();
         let mut varlen_prefix_buffer = VarLengthPrefixBuffer::new(&mut buffer, 0).unwrap();
-        varlen_prefix_buffer.extend_from_slice(&[1;64]).unwrap();
+        varlen_prefix_buffer.extend_from_slice(&[1; 64]).unwrap();
         varlen_prefix_buffer.clear_range(16..48);
         drop(varlen_prefix_buffer);
         assert_eq!(buffer.len(), 34);

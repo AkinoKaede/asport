@@ -1,9 +1,23 @@
 use std::{any::Any, sync::Arc};
 
-use hyphae_handshake::{crypto::{InitialCrypto, SymmetricKey, SyncCryptoBackend, TransportCrypto, TransportRekey, HYPHAE_AEAD_TAG_LEN}, customization::SyncHandshakeConfig, handshake::{AllocHyphaeHandshake, HandshakeVersion}, quic::{to_tls_error_code, QUIC_V1_TRANSPORT_LABEL}, Error};
+use hyphae_handshake::{
+    crypto::{
+        InitialCrypto, SymmetricKey, SyncCryptoBackend, TransportCrypto, TransportRekey,
+        HYPHAE_AEAD_TAG_LEN,
+    },
+    customization::SyncHandshakeConfig,
+    handshake::{AllocHyphaeHandshake, HandshakeVersion},
+    quic::{to_tls_error_code, QUIC_V1_TRANSPORT_LABEL},
+    Error,
+};
 use quinn_proto::{crypto, transport_parameters::TransportParameters, ConnectionId, Side};
 
-use crate::{sessionkeys::{initial_keys, keys_from_level_secret, packet_keys_from_level_secret}, util::HandshakeMessageFramer, config::HyphaeCryptoConfig, customization::QuinnHandshakeData};
+use crate::{
+    config::HyphaeCryptoConfig,
+    customization::QuinnHandshakeData,
+    sessionkeys::{initial_keys, keys_from_level_secret, packet_keys_from_level_secret},
+    util::HandshakeMessageFramer,
+};
 
 pub struct HyphaeSession<T, B>
 where
@@ -23,7 +37,7 @@ where
     pub(crate) server_name: Option<String>,
 }
 
-impl <T, B> HyphaeSession<T, B>
+impl<T, B> HyphaeSession<T, B>
 where
     T: SyncHandshakeConfig,
     T::Driver: QuinnHandshakeData,
@@ -39,31 +53,35 @@ where
                 Some(handshake) => {
                     handshake.read_message(message)?;
                     handshake
-                },
+                }
                 None => {
                     if self.initiator {
                         unreachable!();
                     }
-                    self.handshake.insert(
-                        AllocHyphaeHandshake::new_responder(
-                            &self.config.handshake_config,
-                            self.config.crypto.clone(),
-                            HandshakeVersion::Version1,
-                            QUIC_V1_TRANSPORT_LABEL,
-                            self.params.take().unwrap_or_default(),
-                            message
-                        )?
-                    )
-                },
+                    self.handshake.insert(AllocHyphaeHandshake::new_responder(
+                        &self.config.handshake_config,
+                        self.config.crypto.clone(),
+                        HandshakeVersion::Version1,
+                        QUIC_V1_TRANSPORT_LABEL,
+                        self.params.take().unwrap_or_default(),
+                        message,
+                    )?)
+                }
             };
-            
+
             if self.peer_params.is_none() {
                 if let Some(mut peer_params_bytes) = handshake.peer_params() {
-                    self.peer_params = Some(TransportParameters::read(Side::Client, &mut peer_params_bytes).map_err(handshake_failed)?);
+                    self.peer_params = Some(
+                        TransportParameters::read(Side::Client, &mut peer_params_bytes)
+                            .map_err(handshake_failed)?,
+                    );
                 }
             }
 
-            if !self.handshake_data_ready && (handshake.handshake_driver().handshake_data().is_some() || handshake.is_handshake_finished()) {
+            if !self.handshake_data_ready
+                && (handshake.handshake_driver().handshake_data().is_some()
+                    || handshake.is_handshake_finished())
+            {
                 self.handshake_data_ready = true;
                 new_handshake_data = true;
             }
@@ -79,23 +97,25 @@ where
                 if !self.initiator {
                     unreachable!();
                 }
-                self.handshake.insert(
-                    AllocHyphaeHandshake::new_initiator(
-                        &self.config.handshake_config,
-                        self.config.crypto.clone(),
-                        HandshakeVersion::Version1,
-                        QUIC_V1_TRANSPORT_LABEL,
-                        self.params.take().unwrap_or_default(),
-                        self.server_name.take().unwrap_or_default().as_str()
-                    )?
-                )
-            },
+                self.handshake.insert(AllocHyphaeHandshake::new_initiator(
+                    &self.config.handshake_config,
+                    self.config.crypto.clone(),
+                    HandshakeVersion::Version1,
+                    QUIC_V1_TRANSPORT_LABEL,
+                    self.params.take().unwrap_or_default(),
+                    self.server_name.take().unwrap_or_default().as_str(),
+                )?)
+            }
         };
 
         if handshake.next_level_secret_ready() {
             let mut level_secret = SymmetricKey::default();
             handshake.next_level_secret(&mut level_secret)?;
-            let keys = keys_from_level_secret(handshake.is_initiator(), &level_secret, &handshake.transport_crypto()?);
+            let keys = keys_from_level_secret(
+                handshake.is_initiator(),
+                &level_secret,
+                &handshake.transport_crypto()?,
+            );
 
             if self.rekey.is_none() && handshake.is_handshake_finished() {
                 let transport_crypto = handshake.transport_crypto()?;
@@ -116,18 +136,28 @@ where
     }
 }
 
-impl <T, B> crypto::Session for HyphaeSession<T, B>
+impl<T, B> crypto::Session for HyphaeSession<T, B>
 where
     T: SyncHandshakeConfig,
     T::Driver: QuinnHandshakeData,
     B: SyncCryptoBackend,
 {
-    fn initial_keys(&self, dst_cid: &quinn_proto::ConnectionId, side: quinn_proto::Side) -> crypto::Keys {
+    fn initial_keys(
+        &self,
+        dst_cid: &quinn_proto::ConnectionId,
+        side: quinn_proto::Side,
+    ) -> crypto::Keys {
         let local_is_initiator = match side {
             Side::Client => true,
             Side::Server => false,
         };
-        initial_keys(local_is_initiator, HandshakeVersion::Version1, QUIC_V1_TRANSPORT_LABEL, &dst_cid, &self.config.crypto.initial_crypto())
+        initial_keys(
+            local_is_initiator,
+            HandshakeVersion::Version1,
+            QUIC_V1_TRANSPORT_LABEL,
+            &dst_cid,
+            &self.config.crypto.initial_crypto(),
+        )
     }
 
     fn handshake_data(&self) -> Option<Box<dyn Any>> {
@@ -167,9 +197,12 @@ where
 
     fn read_handshake(&mut self, buf: &[u8]) -> Result<bool, quinn_proto::TransportError> {
         if self.failed {
-            return Err(quinn_proto::TransportErrorCode::crypto(to_tls_error_code(Error::Internal)).into());
+            return Err(quinn_proto::TransportErrorCode::crypto(to_tls_error_code(
+                Error::Internal,
+            ))
+            .into());
         }
-        
+
         self.read_handshake_inner(buf).map_err(|err| {
             self.failed = true;
             self.handshake = None;
@@ -178,7 +211,12 @@ where
         })
     }
 
-    fn transport_parameters(&self) -> Result<Option<quinn_proto::transport_parameters::TransportParameters>, quinn_proto::TransportError> {
+    fn transport_parameters(
+        &self,
+    ) -> Result<
+        Option<quinn_proto::transport_parameters::TransportParameters>,
+        quinn_proto::TransportError,
+    > {
         Ok(self.peer_params)
     }
 
@@ -199,7 +237,7 @@ where
                 buf.clear();
                 buf.push(255);
                 None
-            },
+            }
         }
     }
 
@@ -208,9 +246,13 @@ where
             Some((rekey, transport_crypto)) => {
                 let mut next_1rtt_secret = SymmetricKey::default();
                 rekey.next_1rtt_secret(&mut next_1rtt_secret);
-                let packet_keys = packet_keys_from_level_secret(self.initiator, &next_1rtt_secret, transport_crypto);
+                let packet_keys = packet_keys_from_level_secret(
+                    self.initiator,
+                    &next_1rtt_secret,
+                    transport_crypto,
+                );
                 Some(packet_keys)
-            },
+            }
             None => None,
         }
     }
@@ -222,17 +264,25 @@ where
 
         let initial_crypto = self.config.crypto.initial_crypto();
         let mut retry_key = SymmetricKey::default();
-        initial_crypto.retry_tag_secret(HandshakeVersion::Version1, QUIC_V1_TRANSPORT_LABEL, &orig_dst_cid, &mut retry_key)
+        initial_crypto
+            .retry_tag_secret(
+                HandshakeVersion::Version1,
+                QUIC_V1_TRANSPORT_LABEL,
+                &orig_dst_cid,
+                &mut retry_key,
+            )
             .expect("initial crypto can generate retry secret");
 
         let mut packet_in_place = Vec::with_capacity(header.len() + payload.len());
         packet_in_place.extend_from_slice(header);
         packet_in_place.extend_from_slice(&payload[0..payload.len() - HYPHAE_AEAD_TAG_LEN]);
         packet_in_place.extend_from_slice(&[0u8; HYPHAE_AEAD_TAG_LEN]);
-        initial_crypto.encrypt_in_place(&retry_key, 0, b"", &mut packet_in_place)
+        initial_crypto
+            .encrypt_in_place(&retry_key, 0, b"", &mut packet_in_place)
             .expect("initial crypto can encrypt retry packet");
 
-        payload[payload.len() - HYPHAE_AEAD_TAG_LEN..] == packet_in_place[packet_in_place.len() - HYPHAE_AEAD_TAG_LEN..]
+        payload[payload.len() - HYPHAE_AEAD_TAG_LEN..]
+            == packet_in_place[packet_in_place.len() - HYPHAE_AEAD_TAG_LEN..]
     }
 
     #[allow(unused_variables)]
@@ -243,19 +293,22 @@ where
         context: &[u8],
     ) -> Result<(), crypto::ExportKeyingMaterialError> {
         // Check if handshake is completed
-        let handshake = self.handshake.as_ref()
+        let handshake = self
+            .handshake
+            .as_ref()
             .ok_or(crypto::ExportKeyingMaterialError)?;
-        
+
         if !handshake.is_handshake_finished() {
             return Err(crypto::ExportKeyingMaterialError);
         }
-        
+
         // Export the keying material using Hyphae's implementation
-        handshake.export_keying_material(label, context, output)
+        handshake
+            .export_keying_material(label, context, output)
             .map_err(|_| crypto::ExportKeyingMaterialError)
     }
 }
 
-fn handshake_failed<T> (_: T) -> Error {
+fn handshake_failed<T>(_: T) -> Error {
     Error::HandshakeFailed
 }

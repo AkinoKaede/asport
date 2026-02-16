@@ -1,4 +1,10 @@
-use crate::{crypto::{CryptoBackend, CryptoError, NoiseHandshake, SecretKeySetup, SymmetricKey, TransportRekey}, handshake::HYPHAE_KEY_ASK_LABEL, crypto::noise::x25519::PublicKey};
+use crate::{
+    crypto::noise::x25519::PublicKey,
+    crypto::{
+        CryptoBackend, CryptoError, NoiseHandshake, SecretKeySetup, SymmetricKey, TransportRekey,
+    },
+    handshake::HYPHAE_KEY_ASK_LABEL,
+};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LoggedSecret {
@@ -12,7 +18,7 @@ pub struct LoggedSecret {
 pub enum SecretLabel {
     NoiseProtocol,
     Handshake,
-    OneRtt (u64),
+    OneRtt(u64),
 }
 
 impl SecretLabel {
@@ -40,7 +46,7 @@ pub struct KeyLoggingBackend<R: SecretReceiver, B: CryptoBackend> {
     inner: B,
 }
 
-impl <R, B> KeyLoggingBackend<R, B>
+impl<R, B> KeyLoggingBackend<R, B>
 where
     R: SecretReceiver,
     B: CryptoBackend,
@@ -53,7 +59,7 @@ where
     }
 }
 
-impl <R, B> CryptoBackend for KeyLoggingBackend<R, B>
+impl<R, B> CryptoBackend for KeyLoggingBackend<R, B>
 where
     R: SecretReceiver,
     B: CryptoBackend,
@@ -75,15 +81,26 @@ where
     }
 
     fn new_handshake(&self) -> Result<Self::NoiseHandshake, CryptoError> {
-        Ok(KeyLoggingNoiseHandshake::new(self.receiver.clone(), self.inner.new_handshake()?))
+        Ok(KeyLoggingNoiseHandshake::new(
+            self.receiver.clone(),
+            self.inner.new_handshake()?,
+        ))
     }
 
-    fn transport_crypto(&self, handshake: &Self::NoiseHandshake) -> Result<Self::TransportCrypto, CryptoError> {
+    fn transport_crypto(
+        &self,
+        handshake: &Self::NoiseHandshake,
+    ) -> Result<Self::TransportCrypto, CryptoError> {
         self.inner.transport_crypto(&handshake.inner)
     }
 
-    fn export_1rtt_rekey(&self, handshake: &mut Self::NoiseHandshake, rekey: &mut Self::TransportRekey) -> Result<(), CryptoError> {
-        self.inner.export_1rtt_rekey(&mut handshake.inner, &mut rekey.inner)?;
+    fn export_1rtt_rekey(
+        &self,
+        handshake: &mut Self::NoiseHandshake,
+        rekey: &mut Self::TransportRekey,
+    ) -> Result<(), CryptoError> {
+        self.inner
+            .export_1rtt_rekey(&mut handshake.inner, &mut rekey.inner)?;
 
         rekey.last_logged_secret = handshake.last_logged_secret;
         rekey.receiver = Some(handshake.receiver.clone());
@@ -102,7 +119,7 @@ pub struct KeyLoggingNoiseHandshake<R: SecretReceiver, X: NoiseHandshake> {
     inner: X,
 }
 
-impl <R, X> KeyLoggingNoiseHandshake<R, X>
+impl<R, X> KeyLoggingNoiseHandshake<R, X>
 where
     R: SecretReceiver,
     X: NoiseHandshake,
@@ -126,37 +143,40 @@ where
     }
 }
 
-impl <R, X> NoiseHandshake for KeyLoggingNoiseHandshake<R, X>
+impl<R, X> NoiseHandshake for KeyLoggingNoiseHandshake<R, X>
 where
     R: SecretReceiver,
     X: NoiseHandshake,
 {
-    fn initialize<'a> (
+    fn initialize<'a>(
         &mut self,
         rng: &mut (impl rand_core::CryptoRng + rand_core::RngCore),
         protocol_name: &str,
         initiator: bool,
-        prologue: impl Iterator<Item = &'a[u8]>,
+        prologue: impl Iterator<Item = &'a [u8]>,
         s: Option<SecretKeySetup>,
-        rs: Option<&[u8]>
+        rs: Option<&[u8]>,
     ) -> Result<(), CryptoError> {
         self.noise_protocol = Some(protocol_name.into());
-        self.inner.initialize(rng, protocol_name, initiator, prologue, s, rs)
+        self.inner
+            .initialize(rng, protocol_name, initiator, prologue, s, rs)
     }
 
     fn write_message_in_place(&mut self, buffer: &mut [u8]) -> Result<(), CryptoError> {
         self.position = self.position.saturating_add(1);
         self.inner.write_message_in_place(buffer)?;
         if self.position == 1 && buffer.len() >= PublicKey::SIZE {
-            self.initiator_ephemeral.copy_from_slice(&buffer[0..PublicKey::SIZE]);
+            self.initiator_ephemeral
+                .copy_from_slice(&buffer[0..PublicKey::SIZE]);
         }
         Ok(())
     }
 
-    fn read_message_in_place<'a> (&mut self, buffer: &'a mut [u8]) -> Result<&'a [u8], CryptoError> {
+    fn read_message_in_place<'a>(&mut self, buffer: &'a mut [u8]) -> Result<&'a [u8], CryptoError> {
         self.position = self.position.saturating_add(1);
         if self.position == 1 && buffer.len() >= PublicKey::SIZE {
-            self.initiator_ephemeral.copy_from_slice(&buffer[0..PublicKey::SIZE]);
+            self.initiator_ephemeral
+                .copy_from_slice(&buffer[0..PublicKey::SIZE]);
         }
         self.inner.read_message_in_place(buffer)
     }
@@ -221,14 +241,16 @@ where
             SecretLabel::NoiseProtocol => {}
             SecretLabel::Handshake => {
                 if self.position != 2 {
-                    self.receiver.invalid_secret(self.noise_proto(), self.position, &secret);
+                    self.receiver
+                        .invalid_secret(self.noise_proto(), self.position, &secret);
                 }
-            },
+            }
             SecretLabel::OneRtt(_) => {
                 if !self.is_finished() {
-                    self.receiver.invalid_secret(self.noise_proto(), self.position, &secret);
+                    self.receiver
+                        .invalid_secret(self.noise_proto(), self.position, &secret);
                 }
-            },
+            }
         }
 
         self.receiver.log_secret(secret);
@@ -237,7 +259,12 @@ where
         Ok(())
     }
 
-    fn export_keying_material(&self, label: &[u8], context: &[u8], output: &mut [u8]) -> Result<(), CryptoError> {
+    fn export_keying_material(
+        &self,
+        label: &[u8],
+        context: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), CryptoError> {
         self.inner.export_keying_material(label, context, output)
     }
 }
@@ -249,21 +276,25 @@ pub struct KeyLoggingTransportRekey<R: SecretReceiver, T: TransportRekey> {
     inner: T,
 }
 
-impl <R, T> Default for KeyLoggingTransportRekey<R, T>
+impl<R, T> Default for KeyLoggingTransportRekey<R, T>
 where
     R: SecretReceiver,
-    T: TransportRekey
+    T: TransportRekey,
 {
     fn default() -> Self {
-        Self { receiver: None, last_logged_secret: None, initiator_ephemeral: Default::default(), inner: Default::default() }
+        Self {
+            receiver: None,
+            last_logged_secret: None,
+            initiator_ephemeral: Default::default(),
+            inner: Default::default(),
+        }
     }
 }
 
-
-impl <R, T> TransportRekey for KeyLoggingTransportRekey<R, T>
+impl<R, T> TransportRekey for KeyLoggingTransportRekey<R, T>
 where
     R: SecretReceiver,
-    T: TransportRekey
+    T: TransportRekey,
 {
     fn next_1rtt_secret(&mut self, level_secret: &mut SymmetricKey) {
         self.inner.next_1rtt_secret(level_secret);

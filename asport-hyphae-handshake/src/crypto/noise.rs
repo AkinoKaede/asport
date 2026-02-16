@@ -3,9 +3,15 @@ use std::iter::once;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::{Zeroize, Zeroizing};
 
-use crate::crypto::{backends::{AeadBackend, HashBackend, HashExt}, CryptoError, SymmetricKey, HYPHAE_AEAD_TAG_LEN};
+use crate::crypto::{
+    backends::{AeadBackend, HashBackend, HashExt},
+    CryptoError, SymmetricKey, HYPHAE_AEAD_TAG_LEN,
+};
 
-use self::{patterns::{parse_protocol_name, HandshakeParams, PreMessageTokens, Token}, x25519::{PublicKey, SecretKey, SharedSecret}};
+use self::{
+    patterns::{parse_protocol_name, HandshakeParams, PreMessageTokens, Token},
+    x25519::{PublicKey, SecretKey, SharedSecret},
+};
 
 mod ask;
 pub mod patterns;
@@ -16,7 +22,7 @@ pub use ask::AskChain;
 use super::{NoiseHandshake, SecretKeySetup, TransportRekey as _};
 
 #[derive(Default, Zeroize)]
-struct Nonce8 (u8);
+struct Nonce8(u8);
 
 impl Nonce8 {
     /// Returns the current nonce or `NoiseError::StateExhausted`.
@@ -26,7 +32,7 @@ impl Nonce8 {
             Some(next_n) => {
                 self.0 = next_n;
                 Ok(n64)
-            },
+            }
             None => return Err(CryptoError::StateExhausted),
         }
     }
@@ -50,12 +56,16 @@ impl<A: AeadBackend> CipherState<A> {
     }
 
     /// Encrypt `buffer` in-place.
-    /// 
+    ///
     /// `buffer` is a mutable slice containing the plaintext message
     /// and 16 bytes of padding to hold the authentication tag. The
     /// plaintext is encrypted in-place and the tag overwrites the
     /// padding.
-    pub fn encrypt_with_ad_in_place(&mut self, ad: &[u8], buffer: &mut [u8]) -> Result<(), CryptoError> {
+    pub fn encrypt_with_ad_in_place(
+        &mut self,
+        ad: &[u8],
+        buffer: &mut [u8],
+    ) -> Result<(), CryptoError> {
         let Some(k) = self.k.as_ref() else {
             return Err(CryptoError::InvalidState);
         };
@@ -63,17 +73,22 @@ impl<A: AeadBackend> CipherState<A> {
             return Err(CryptoError::InsufficientBuffer);
         }
 
-        self.aead_impl.encrypt_in_place(&k, self.n.next()?, ad, buffer)
+        self.aead_impl
+            .encrypt_in_place(&k, self.n.next()?, ad, buffer)
     }
 
     /// Decrypt `buffer` in-place.
-    /// 
+    ///
     /// `buffer` is a mutable slice containing the ciphertext message
     /// and 16 byte authentication tag. The ciphertext is decrypted in-
     /// place and the authentication tag is left in the buffer.
-    /// 
+    ///
     /// Returns a slice containing the decrypted message.
-    pub fn decrypt_with_ad_in_place<'a> (&mut self, ad: &[u8], buffer: &'a mut [u8]) -> Result<&'a [u8], CryptoError> {
+    pub fn decrypt_with_ad_in_place<'a>(
+        &mut self,
+        ad: &[u8],
+        buffer: &'a mut [u8],
+    ) -> Result<&'a [u8], CryptoError> {
         let Some(k) = self.k.as_ref() else {
             return Err(CryptoError::InvalidState);
         };
@@ -81,7 +96,8 @@ impl<A: AeadBackend> CipherState<A> {
             return Err(CryptoError::InsufficientBuffer);
         }
 
-        self.aead_impl.decrypt_in_place(k, self.n.next()?, ad, buffer)
+        self.aead_impl
+            .decrypt_in_place(k, self.n.next()?, ad, buffer)
     }
 }
 
@@ -93,15 +109,24 @@ struct SymmetricState<A: AeadBackend, H: HashBackend> {
     h: H::Hash,
 }
 
-impl <A: AeadBackend, H: HashBackend> Default for SymmetricState<A, H> {
+impl<A: AeadBackend, H: HashBackend> Default for SymmetricState<A, H> {
     fn default() -> Self {
         let hash_impl = H::default();
-        Self { hash_impl: Default::default(), cipher_state: Default::default(), ck: hash_impl.zeros(), h: hash_impl.zeros() }
+        Self {
+            hash_impl: Default::default(),
+            cipher_state: Default::default(),
+            ck: hash_impl.zeros(),
+            h: hash_impl.zeros(),
+        }
     }
 }
 
-impl <A: AeadBackend, H: HashBackend> SymmetricState<A, H> {
-    pub fn initialize_crypto(&mut self, aead_protocol: &str, hash_protocol: &str) -> Result<(), CryptoError> {
+impl<A: AeadBackend, H: HashBackend> SymmetricState<A, H> {
+    pub fn initialize_crypto(
+        &mut self,
+        aead_protocol: &str,
+        hash_protocol: &str,
+    ) -> Result<(), CryptoError> {
         self.cipher_state = Default::default();
         self.cipher_state.aead_impl.initialize(aead_protocol)?;
         self.hash_impl.initialize(hash_protocol)?;
@@ -112,9 +137,11 @@ impl <A: AeadBackend, H: HashBackend> SymmetricState<A, H> {
         // Note: `cipher_state` is reset in `initialize_crypto`.
         if protocol_name.len() <= self.hash_impl.hash_as_slice(&self.h).len() {
             self.h = self.hash_impl.zeros();
-            self.hash_impl.hash_as_mut_slice(&mut self.h)[0..protocol_name.len()].copy_from_slice(protocol_name);
+            self.hash_impl.hash_as_mut_slice(&mut self.h)[0..protocol_name.len()]
+                .copy_from_slice(protocol_name);
         } else {
-            self.hash_impl.hash_into(&mut self.h, false, once(protocol_name));
+            self.hash_impl
+                .hash_into(&mut self.h, false, once(protocol_name));
         }
         self.ck = self.h.clone();
     }
@@ -123,32 +150,45 @@ impl <A: AeadBackend, H: HashBackend> SymmetricState<A, H> {
         self.mix_hash_multi(once(input));
     }
 
-    pub fn mix_hash_multi<'a> (&mut self, inputs: impl Iterator<Item = &'a[u8]>) {
+    pub fn mix_hash_multi<'a>(&mut self, inputs: impl Iterator<Item = &'a [u8]>) {
         self.hash_impl.hash_into(&mut self.h, true, inputs);
     }
 
     pub fn mix_key(&mut self, input_key_material: &[u8]) {
         let mut ck_next = Zeroizing::new(self.hash_impl.zeros());
         let mut temp_k = Zeroizing::new(SymmetricKey::default());
-        self.hash_impl.hkdf(&self.ck, [self.hash_impl.hash_as_mut_slice(&mut ck_next), temp_k.as_mut()], once(input_key_material), b"");
+        self.hash_impl.hkdf(
+            &self.ck,
+            [
+                self.hash_impl.hash_as_mut_slice(&mut ck_next),
+                temp_k.as_mut(),
+            ],
+            once(input_key_material),
+            b"",
+        );
 
         self.ck = (&*ck_next).clone();
         self.cipher_state.initialize_key(Some(&temp_k));
     }
 
-    pub fn encrypt_and_hash_in_place(&mut self, buffer: &mut [u8]) -> Result<(), CryptoError>{
+    pub fn encrypt_and_hash_in_place(&mut self, buffer: &mut [u8]) -> Result<(), CryptoError> {
         if self.cipher_state.has_key() {
-            self.cipher_state.encrypt_with_ad_in_place(self.hash_impl.hash_as_slice(&self.h), buffer)?;
+            self.cipher_state
+                .encrypt_with_ad_in_place(self.hash_impl.hash_as_slice(&self.h), buffer)?;
         }
         self.mix_hash(buffer);
         Ok(())
     }
 
-    pub fn decrypt_and_hash_in_place<'a> (&mut self, buffer: &'a mut [u8]) -> Result<&'a [u8], CryptoError> {
+    pub fn decrypt_and_hash_in_place<'a>(
+        &mut self,
+        buffer: &'a mut [u8],
+    ) -> Result<&'a [u8], CryptoError> {
         let ad = self.h.clone();
         self.mix_hash(buffer);
         if self.cipher_state.has_key() {
-            self.cipher_state.decrypt_with_ad_in_place(self.hash_impl.hash_as_slice(&ad), buffer)
+            self.cipher_state
+                .decrypt_with_ad_in_place(self.hash_impl.hash_as_slice(&ad), buffer)
         } else {
             Ok(buffer)
         }
@@ -163,7 +203,7 @@ impl <A: AeadBackend, H: HashBackend> SymmetricState<A, H> {
     }
 }
 
-impl <A: AeadBackend, H: HashBackend> Drop for SymmetricState<A, H> {
+impl<A: AeadBackend, H: HashBackend> Drop for SymmetricState<A, H> {
     fn drop(&mut self) {
         self.ck.zeroize();
     }
@@ -197,13 +237,16 @@ impl HandshakeKeys {
         self.validity_check(Self::STATE_HAS_E, 0)?;
         Ok(self.e_secret.public())
     }
-    
+
     pub fn remote_static_public(&self) -> Result<&PublicKey, CryptoError> {
         self.validity_check(Self::STATE_HAS_RS, 0)?;
         Ok(&self.rs)
     }
 
-    pub fn init_ephemeral_rng(&mut self, rng: &mut (impl CryptoRng + RngCore)) -> Result<(), CryptoError> {
+    pub fn init_ephemeral_rng(
+        &mut self,
+        rng: &mut (impl CryptoRng + RngCore),
+    ) -> Result<(), CryptoError> {
         self.validity_set(0, Self::STATE_HAS_E)?;
         self.e_secret = SecretKey::new_from_rng(rng);
         Ok(())
@@ -249,7 +292,7 @@ impl HandshakeKeys {
 
     fn validity_check(&self, must_have: u8, must_set: u8) -> Result<(), CryptoError> {
         if self.state & must_have != must_have || self.state & must_set != 0 {
-            return Err(CryptoError::Internal)
+            return Err(CryptoError::Internal);
         } else {
             Ok(())
         }
@@ -275,12 +318,21 @@ pub struct HandshakeState<A: AeadBackend, H: HashBackend> {
 
 impl<A: AeadBackend, H: HashBackend> Default for HandshakeState<A, H> {
     fn default() -> Self {
-        Self { handshake: Default::default(), symmetric_state: Default::default(), keys: Default::default(), step: Default::default(), level_secret_ask_count: 0, initiator: Default::default() }
+        Self {
+            handshake: Default::default(),
+            symmetric_state: Default::default(),
+            keys: Default::default(),
+            step: Default::default(),
+            level_secret_ask_count: 0,
+            initiator: Default::default(),
+        }
     }
 }
 
 impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
-    pub fn parse_protocol(protocol_name: &str) -> Result<(HandshakeParams, &str, &str), CryptoError> {
+    pub fn parse_protocol(
+        protocol_name: &str,
+    ) -> Result<(HandshakeParams, &str, &str), CryptoError> {
         let (handshake, diffie_hellman, aead, hash) = parse_protocol_name(protocol_name)?;
         if diffie_hellman != "25519" {
             return Err(CryptoError::UnsupportedProtocol);
@@ -290,13 +342,21 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         H::default().initialize(hash)?;
 
         if handshake.has_modifier_hfs() || handshake.has_modifier_psk(None) {
-            return Err(CryptoError::UnsupportedProtocol); 
+            return Err(CryptoError::UnsupportedProtocol);
         }
 
         Ok((handshake, aead, hash))
     }
 
-    pub fn initialize<'a> (&mut self, rng: &mut (impl CryptoRng + RngCore), protocol_name: &str, initiator: bool, prologue: impl Iterator<Item = &'a[u8]>, s: Option<&SecretKey>, rs: Option<&PublicKey>) -> Result<(), CryptoError> {
+    pub fn initialize<'a>(
+        &mut self,
+        rng: &mut (impl CryptoRng + RngCore),
+        protocol_name: &str,
+        initiator: bool,
+        prologue: impl Iterator<Item = &'a [u8]>,
+        s: Option<&SecretKey>,
+        rs: Option<&PublicKey>,
+    ) -> Result<(), CryptoError> {
         if !self.is_reset() {
             return Err(CryptoError::InvalidState);
         }
@@ -313,19 +373,24 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         if let Some(rs) = rs {
             self.keys.set_remote_static(rs.as_ref())?;
         }
-        self.symmetric_state.initialize_symmetric(protocol_name.as_bytes());
+        self.symmetric_state
+            .initialize_symmetric(protocol_name.as_bytes());
         self.symmetric_state.mix_hash_multi(prologue);
 
         let handshake_desc = handshake.pattern().handshake_desc();
         match (handshake_desc.pre_message_init, initiator) {
-            (PreMessageTokens::Empty, _) => {},
-            (PreMessageTokens::S, true) => self.symmetric_state.mix_hash(self.keys.static_public()?.as_ref()),
+            (PreMessageTokens::Empty, _) => {}
+            (PreMessageTokens::S, true) => self
+                .symmetric_state
+                .mix_hash(self.keys.static_public()?.as_ref()),
             (PreMessageTokens::S, false) => self.symmetric_state.mix_hash(self.keys.rs.as_ref()),
         }
         match (handshake_desc.pre_message_resp, initiator) {
-            (PreMessageTokens::Empty, _) => {},
+            (PreMessageTokens::Empty, _) => {}
             (PreMessageTokens::S, true) => self.symmetric_state.mix_hash(self.keys.rs.as_ref()),
-            (PreMessageTokens::S, false) => self.symmetric_state.mix_hash(self.keys.static_public()?.as_ref()),
+            (PreMessageTokens::S, false) => self
+                .symmetric_state
+                .mix_hash(self.keys.static_public()?.as_ref()),
         }
 
         self.step = 0;
@@ -340,7 +405,7 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
     }
 
     /// Returns true if handshake state is for an initiator.
-    /// 
+    ///
     /// Returns false before calling `initialize(...)`.
     pub fn is_initiator(&self) -> bool {
         self.initiator
@@ -360,12 +425,8 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
             return false;
         }
 
-        let phase = if self.is_initiator() {
-            0
-        } else {
-            1
-        };
-        
+        let phase = if self.is_initiator() { 0 } else { 1 };
+
         self.step % 2 == phase
     }
 
@@ -398,43 +459,44 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         for token in self.next_message_tokens()? {
             match token {
                 Token::E => {
-                    buffer[cursor..cursor+PublicKey::SIZE].copy_from_slice(self.keys.ephemeral_public()?.as_ref());
-                    self.symmetric_state.mix_hash(&buffer[cursor..cursor+PublicKey::SIZE]);
+                    buffer[cursor..cursor + PublicKey::SIZE]
+                        .copy_from_slice(self.keys.ephemeral_public()?.as_ref());
+                    self.symmetric_state
+                        .mix_hash(&buffer[cursor..cursor + PublicKey::SIZE]);
                     cursor += PublicKey::SIZE;
-                },
+                }
                 Token::S => {
-                    buffer[cursor..cursor+PublicKey::SIZE].copy_from_slice(self.keys.static_public()?.as_ref());
+                    buffer[cursor..cursor + PublicKey::SIZE]
+                        .copy_from_slice(self.keys.static_public()?.as_ref());
                     let s_size = if self.symmetric_state.has_key() {
                         PublicKey::SIZE + 16
                     } else {
                         PublicKey::SIZE
                     };
-                    self.symmetric_state.encrypt_and_hash_in_place(&mut buffer[cursor..cursor+s_size])?;
+                    self.symmetric_state
+                        .encrypt_and_hash_in_place(&mut buffer[cursor..cursor + s_size])?;
                     cursor += s_size;
-                },
+                }
                 Token::DhEE => {
                     self.symmetric_state.mix_key(self.keys.dh_ee()?.as_ref());
+                }
+                Token::DhES => match self.initiator {
+                    true => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
+                    false => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
                 },
-                Token::DhES =>  {
-                    match self.initiator {
-                        true => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
-                        false => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
-                    }
+                Token::DhSE => match self.initiator {
+                    true => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
+                    false => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
                 },
-                Token::DhSE => {
-                    match self.initiator {
-                        true => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
-                        false => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
-                    }
-                },
-                Token::DhSS =>  {
+                Token::DhSS => {
                     self.symmetric_state.mix_key(self.keys.dh_ss()?.as_ref());
-                },
+                }
                 Token::Psk(_) => todo!(),
             }
         }
 
-        self.symmetric_state.encrypt_and_hash_in_place(&mut buffer[cursor..])?;
+        self.symmetric_state
+            .encrypt_and_hash_in_place(&mut buffer[cursor..])?;
         self.step += 1;
         self.level_secret_ask_count = 0;
 
@@ -447,11 +509,17 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         // todo, check payload max len
         let mut message = vec![0u8; token_bytes + payload.len() + payload_tag_bytes];
         message[token_bytes..token_bytes + payload.len()].copy_from_slice(payload);
-        self.write_message_in_place(&mut message).map_err(|e| { message.zeroize(); e })?;
+        self.write_message_in_place(&mut message).map_err(|e| {
+            message.zeroize();
+            e
+        })?;
         Ok(message)
     }
 
-    pub fn read_message_in_place<'a> (&mut self, buffer: &'a mut [u8]) -> Result<&'a [u8], CryptoError> {
+    pub fn read_message_in_place<'a>(
+        &mut self,
+        buffer: &'a mut [u8],
+    ) -> Result<&'a [u8], CryptoError> {
         if self.is_my_turn() {
             return Err(CryptoError::InvalidState);
         }
@@ -464,43 +532,45 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         for token in self.next_message_tokens()? {
             match token {
                 Token::E => {
-                    self.symmetric_state.mix_hash(&buffer[cursor..cursor+PublicKey::SIZE]);
-                    self.keys.set_remote_ephemeral(&buffer[cursor..cursor+PublicKey::SIZE])?;
+                    self.symmetric_state
+                        .mix_hash(&buffer[cursor..cursor + PublicKey::SIZE]);
+                    self.keys
+                        .set_remote_ephemeral(&buffer[cursor..cursor + PublicKey::SIZE])?;
                     cursor += PublicKey::SIZE;
-                },
+                }
                 Token::S => {
                     let s_size = if self.symmetric_state.has_key() {
                         PublicKey::SIZE + 16
                     } else {
                         PublicKey::SIZE
                     };
-                    let rs = self.symmetric_state.decrypt_and_hash_in_place(&mut buffer[cursor..cursor+s_size])?;
+                    let rs = self
+                        .symmetric_state
+                        .decrypt_and_hash_in_place(&mut buffer[cursor..cursor + s_size])?;
                     self.keys.set_remote_static(rs)?;
                     cursor += s_size;
-                },
+                }
                 Token::DhEE => {
                     self.symmetric_state.mix_key(self.keys.dh_ee()?.as_ref());
+                }
+                Token::DhES => match self.initiator {
+                    true => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
+                    false => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
                 },
-                Token::DhES =>  {
-                    match self.initiator {
-                        true => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
-                        false => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
-                    }
+                Token::DhSE => match self.initiator {
+                    true => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
+                    false => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
                 },
-                Token::DhSE => {
-                    match self.initiator {
-                        true => self.symmetric_state.mix_key(self.keys.dh_se()?.as_ref()),
-                        false => self.symmetric_state.mix_key(self.keys.dh_es()?.as_ref()),
-                    }
-                },
-                Token::DhSS =>  {
+                Token::DhSS => {
                     self.symmetric_state.mix_key(self.keys.dh_ss()?.as_ref());
-                },
+                }
                 Token::Psk(_) => todo!(),
             }
         }
 
-        let payload = self.symmetric_state.decrypt_and_hash_in_place(&mut buffer[cursor..])?;
+        let payload = self
+            .symmetric_state
+            .decrypt_and_hash_in_place(&mut buffer[cursor..])?;
         self.step += 1;
         self.level_secret_ask_count = 0;
 
@@ -525,7 +595,7 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
     }
 
     /// Returns the remote peer's static (public) key if it is known.
-    /// 
+    ///
     /// Warning, if the handshake is not finished, this key may not be
     /// authenticated yet.
     pub fn remote_static(&self) -> Option<&[u8]> {
@@ -538,19 +608,24 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
     }
 
     /// Export keying material for application use
-    /// 
+    ///
     /// This derives key material from the final handshake state using HKDF.
     /// The derivation uses the chaining key (ck) as the PRK and combines
     /// the handshake hash, custom label, and context as the info parameter.
-    pub fn export_keying_material(&self, label: &[u8], context: &[u8], output: &mut [u8]) -> Result<(), CryptoError> {
+    pub fn export_keying_material(
+        &self,
+        label: &[u8],
+        context: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), CryptoError> {
         if !self.is_complete() {
             return Err(CryptoError::InvalidState);
         }
-        
+
         // Use HKDF-Expand with the chaining key as PRK
         // Info = handshake_hash || label_length || label || context_length || context || "hyphae-export"
         let handshake_hash = self.current_handshake_hash();
-        
+
         // Build the info parameter
         let mut info = Vec::new();
         info.extend_from_slice(&(handshake_hash.len() as u16).to_be_bytes());
@@ -560,23 +635,30 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         info.extend_from_slice(&(context.len() as u16).to_be_bytes());
         info.extend_from_slice(context);
         info.extend_from_slice(b"hyphae-export");
-        
+
         // For outputs larger than hash size, we need to use HKDF-Expand properly
         // Split the output into hash-sized chunks
-        let hash_size = self.symmetric_state.hash_impl.hash_as_slice(&self.symmetric_state.ck).len();
-        
+        let hash_size = self
+            .symmetric_state
+            .hash_impl
+            .hash_as_slice(&self.symmetric_state.ck)
+            .len();
+
         for (i, chunk) in output.chunks_mut(hash_size).enumerate() {
             let mut full_info = info.clone();
-            full_info.push((i + 1) as u8);  // HKDF-Expand counter
-            
+            full_info.push((i + 1) as u8); // HKDF-Expand counter
+
             if chunk.len() == hash_size {
                 // Full hash-sized chunk
                 let mut temp_hash = self.symmetric_state.hash_impl.zeros();
                 self.symmetric_state.hash_impl.hkdf(
                     &self.symmetric_state.ck,
-                    [self.symmetric_state.hash_impl.hash_as_mut_slice(&mut temp_hash)],
+                    [self
+                        .symmetric_state
+                        .hash_impl
+                        .hash_as_mut_slice(&mut temp_hash)],
                     std::iter::once(full_info.as_slice()),
-                    b""
+                    b"",
                 );
                 chunk.copy_from_slice(self.symmetric_state.hash_impl.hash_as_slice(&temp_hash));
             } else {
@@ -584,19 +666,26 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
                 let mut temp_hash = self.symmetric_state.hash_impl.zeros();
                 self.symmetric_state.hash_impl.hkdf(
                     &self.symmetric_state.ck,
-                    [self.symmetric_state.hash_impl.hash_as_mut_slice(&mut temp_hash)],
+                    [self
+                        .symmetric_state
+                        .hash_impl
+                        .hash_as_mut_slice(&mut temp_hash)],
                     std::iter::once(full_info.as_slice()),
-                    b""
+                    b"",
                 );
                 let temp_slice = self.symmetric_state.hash_impl.hash_as_slice(&temp_hash);
                 chunk.copy_from_slice(&temp_slice[..chunk.len()]);
             }
         }
-        
+
         Ok(())
     }
 
-    pub fn export_ask_into(&mut self, ask: &mut AskChain<H>, label: &[u8]) -> Result<(), CryptoError> {
+    pub fn export_ask_into(
+        &mut self,
+        ask: &mut AskChain<H>,
+        label: &[u8],
+    ) -> Result<(), CryptoError> {
         if self.handshake.is_none() || self.level_secret_ask_count == u8::MAX {
             return Err(CryptoError::InvalidState);
         }
@@ -609,10 +698,11 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
 
         ask.hash_impl.hkdf(
             &self.symmetric_state.ck,
-            [ask.hash_impl.hash_as_mut_slice(ask_ck)], 
+            [ask.hash_impl.hash_as_mut_slice(ask_ck)],
             [ask.hash_impl.hash_as_slice(&self.symmetric_state.h), label],
-            b"ask");
-        
+            b"ask",
+        );
+
         for _ in 0..self.level_secret_ask_count {
             let mut skip_key = SymmetricKey::default();
             ask.get_ask_into(&mut skip_key)?;
@@ -637,7 +727,7 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
         let mut ask = AskChain::default();
         self.export_ask_into(&mut ask, label)?;
         self.level_secret_ask_count = next_level_secret_ask_count;
-        
+
         ask.next_1rtt_secret(key);
         Ok(())
     }
@@ -667,25 +757,18 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
                     if pattern.has_modifier_psk(None) {
                         has_key = true;
                     }
-                },
+                }
                 Token::S => {
                     token_bytes += PublicKey::SIZE;
                     if has_key {
                         token_bytes += 16;
                     }
-                },
-                Token::DhEE |
-                Token::DhES |
-                Token::DhSE |
-                Token::DhSS => has_key = true,
+                }
+                Token::DhEE | Token::DhES | Token::DhSE | Token::DhSS => has_key = true,
                 Token::Psk(_) => has_key = true,
             }
         }
-        let payload_tag_bytes = if has_key {
-            16
-        } else {
-            0
-        };
+        let payload_tag_bytes = if has_key { 16 } else { 0 };
         (token_bytes, payload_tag_bytes)
     }
 
@@ -697,8 +780,16 @@ impl<A: AeadBackend, H: HashBackend> HandshakeState<A, H> {
     }
 }
 
-impl <A: AeadBackend, H: HashBackend> NoiseHandshake for HandshakeState<A, H> {
-    fn initialize<'a> (&mut self, rng: &mut (impl rand_core::CryptoRng + rand_core::RngCore), protocol_name: &str, initiator: bool, prologue: impl Iterator<Item = &'a[u8]>, s: Option<super::SecretKeySetup>, rs: Option<&[u8]>) -> Result<(), super::CryptoError> {
+impl<A: AeadBackend, H: HashBackend> NoiseHandshake for HandshakeState<A, H> {
+    fn initialize<'a>(
+        &mut self,
+        rng: &mut (impl rand_core::CryptoRng + rand_core::RngCore),
+        protocol_name: &str,
+        initiator: bool,
+        prologue: impl Iterator<Item = &'a [u8]>,
+        s: Option<super::SecretKeySetup>,
+        rs: Option<&[u8]>,
+    ) -> Result<(), super::CryptoError> {
         let s = match s {
             None => None,
             Some(SecretKeySetup::BackendRemote) => return Err(CryptoError::UnsupportedSecretKey),
@@ -708,14 +799,24 @@ impl <A: AeadBackend, H: HashBackend> NoiseHandshake for HandshakeState<A, H> {
             Some(rs) => Some(PublicKey::try_from(rs)?),
             None => None,
         };
-        self.initialize(rng, protocol_name, initiator, prologue, s.as_ref(), rs.as_ref())
+        self.initialize(
+            rng,
+            protocol_name,
+            initiator,
+            prologue,
+            s.as_ref(),
+            rs.as_ref(),
+        )
     }
 
     fn write_message_in_place(&mut self, buffer: &mut [u8]) -> Result<(), super::CryptoError> {
         self.write_message_in_place(buffer)
     }
 
-    fn read_message_in_place<'a> (&mut self, buffer: &'a mut [u8]) -> Result<&'a [u8], super::CryptoError> {
+    fn read_message_in_place<'a>(
+        &mut self,
+        buffer: &'a mut [u8],
+    ) -> Result<&'a [u8], super::CryptoError> {
         self.read_message_in_place(buffer)
     }
 
@@ -754,7 +855,12 @@ impl <A: AeadBackend, H: HashBackend> NoiseHandshake for HandshakeState<A, H> {
         self.get_ask(label, key)
     }
 
-    fn export_keying_material(&self, label: &[u8], context: &[u8], output: &mut [u8]) -> Result<(), CryptoError> {
+    fn export_keying_material(
+        &self,
+        label: &[u8],
+        context: &[u8],
+        output: &mut [u8],
+    ) -> Result<(), CryptoError> {
         self.export_keying_material(label, context, output)
     }
 }
@@ -765,7 +871,16 @@ mod tests {
 
     use rand_core::OsRng;
 
-    use crate::{crypto::{backends::rustcrypto::{AnyAead, AnyHash, Blake2b, Blake2s, ChaChaPoly, RustCryptoBackend}, noise::patterns::{PreMessageTokens, ALL_HANDSHAKE_PATTERNS}, CryptoBackend}, handshake::HYPHAE_KEY_ASK_LABEL};
+    use crate::{
+        crypto::{
+            backends::rustcrypto::{
+                AnyAead, AnyHash, Blake2b, Blake2s, ChaChaPoly, RustCryptoBackend,
+            },
+            noise::patterns::{PreMessageTokens, ALL_HANDSHAKE_PATTERNS},
+            CryptoBackend,
+        },
+        handshake::HYPHAE_KEY_ASK_LABEL,
+    };
 
     use super::*;
 
@@ -777,26 +892,37 @@ mod tests {
         let ad = b"1234";
         let buffer = vec![1u8; 32];
         let mut enc_buffer = buffer.clone();
-        cipher_state.encrypt_with_ad_in_place(ad, &mut enc_buffer).unwrap();
+        cipher_state
+            .encrypt_with_ad_in_place(ad, &mut enc_buffer)
+            .unwrap();
 
         cipher_state.initialize_key(Some(&key));
-        cipher_state.decrypt_with_ad_in_place(ad, &mut enc_buffer).unwrap();
+        cipher_state
+            .decrypt_with_ad_in_place(ad, &mut enc_buffer)
+            .unwrap();
         assert_eq!(buffer[0..16], enc_buffer[0..16]);
 
         let buffer = vec![0u8; 16];
         let mut enc_buffer = buffer.clone();
         cipher_state.initialize_key(Some(&key));
-        cipher_state.encrypt_with_ad_in_place(ad, &mut enc_buffer).unwrap();
+        cipher_state
+            .encrypt_with_ad_in_place(ad, &mut enc_buffer)
+            .unwrap();
 
         cipher_state.initialize_key(Some(&key));
-        cipher_state.decrypt_with_ad_in_place(ad, &mut enc_buffer).unwrap();
+        cipher_state
+            .decrypt_with_ad_in_place(ad, &mut enc_buffer)
+            .unwrap();
     }
 
     #[test]
     fn noise_round_trip_with_snow() {
         let mut protocols = Vec::new();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2s", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2s",
+                handshake.name()
+            ));
         }
 
         for protocol_name in protocols.iter() {
@@ -808,7 +934,10 @@ mod tests {
 
         protocols.clear();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2b", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2b",
+                handshake.name()
+            ));
         }
 
         for protocol_name in protocols.iter() {
@@ -820,10 +949,22 @@ mod tests {
 
         protocols.clear();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2s", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2b", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_SHA256", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_SHA512", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2s",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2b",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_SHA256",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_SHA512",
+                handshake.name()
+            ));
             protocols.push(format!("Noise_{}_25519_AESGCM_BLAKE2s", handshake.name()));
             protocols.push(format!("Noise_{}_25519_AESGCM_BLAKE2b", handshake.name()));
             protocols.push(format!("Noise_{}_25519_AESGCM_SHA256", handshake.name()));
@@ -842,7 +983,10 @@ mod tests {
     fn noise_round_trip() {
         let mut protocols = Vec::new();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2s", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2s",
+                handshake.name()
+            ));
         }
 
         for protocol_name in protocols.iter() {
@@ -852,20 +996,35 @@ mod tests {
 
         protocols.clear();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2b", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2b",
+                handshake.name()
+            ));
         }
 
         for protocol_name in protocols.iter() {
             handshake_round_trip::<ChaChaPoly, Blake2b>(protocol_name, 0..0);
             handshake_round_trip::<ChaChaPoly, Blake2b>(protocol_name, 1..1024);
         }
-        
+
         protocols.clear();
         for handshake in ALL_HANDSHAKE_PATTERNS {
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2s", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_BLAKE2b", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_SHA256", handshake.name()));
-            protocols.push(format!("Noise_{}_25519_ChaChaPoly_SHA512", handshake.name()));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2s",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_BLAKE2b",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_SHA256",
+                handshake.name()
+            ));
+            protocols.push(format!(
+                "Noise_{}_25519_ChaChaPoly_SHA512",
+                handshake.name()
+            ));
             protocols.push(format!("Noise_{}_25519_AESGCM_BLAKE2s", handshake.name()));
             protocols.push(format!("Noise_{}_25519_AESGCM_BLAKE2b", handshake.name()));
             protocols.push(format!("Noise_{}_25519_AESGCM_SHA256", handshake.name()));
@@ -886,7 +1045,9 @@ mod tests {
 
         let mut handshake_keys = HandshakeKeys::default();
         handshake_keys.init_ephemeral_rng(&mut OsRng).unwrap();
-        handshake_keys.set_remote_ephemeral(re_public.as_ref()).unwrap();
+        handshake_keys
+            .set_remote_ephemeral(re_public.as_ref())
+            .unwrap();
 
         let e_public = handshake_keys.ephemeral_public().unwrap();
         let ee = handshake_keys.dh_ee().unwrap();
@@ -895,8 +1056,8 @@ mod tests {
     }
 
     fn generate_random_payload(payload_size_range: &Range<usize>) -> Vec<u8> {
-        let len = 
-            (OsRng.next_u64()
+        let len = (OsRng
+            .next_u64()
             .checked_rem(payload_size_range.len() as u64)
             .unwrap_or_default() as usize)
             + payload_size_range.start;
@@ -906,31 +1067,64 @@ mod tests {
         payload
     }
 
-    fn handshake_round_trip<A: AeadBackend, H: HashBackend> (protocol_name: &str, payload_size_range: Range<usize>) {
+    fn handshake_round_trip<A: AeadBackend, H: HashBackend>(
+        protocol_name: &str,
+        payload_size_range: Range<usize>,
+    ) {
         let handshake_info = format!("({protocol_name} {payload_size_range:?})");
 
         let (handshake_params, _, _, _) = parse_protocol_name(protocol_name).unwrap();
 
         let needs_static_secret = handshake_params.pattern().is_authenticating();
-        let key_init_static_secret = needs_static_secret.0.then(|| SecretKey::new_from_rng(&mut OsRng));
-        let key_resp_static_secret = needs_static_secret.1.then(|| SecretKey::new_from_rng(&mut OsRng));
+        let key_init_static_secret = needs_static_secret
+            .0
+            .then(|| SecretKey::new_from_rng(&mut OsRng));
+        let key_resp_static_secret = needs_static_secret
+            .1
+            .then(|| SecretKey::new_from_rng(&mut OsRng));
         let key_init_static_public = key_init_static_secret.as_ref().map(SecretKey::public);
         let key_resp_static_public = key_resp_static_secret.as_ref().map(SecretKey::public);
 
         let handshake_desc = handshake_params.pattern().handshake_desc();
-        let init_rs = matches!(handshake_desc.pre_message_resp, PreMessageTokens::S).then_some(()).and(key_resp_static_public.clone());
-        let resp_rs = matches!(handshake_desc.pre_message_init, PreMessageTokens::S).then_some(()).and( key_init_static_public.clone());
+        let init_rs = matches!(handshake_desc.pre_message_resp, PreMessageTokens::S)
+            .then_some(())
+            .and(key_resp_static_public.clone());
+        let resp_rs = matches!(handshake_desc.pre_message_init, PreMessageTokens::S)
+            .then_some(())
+            .and(key_init_static_public.clone());
 
         let mut handshake_i: HandshakeState<A, H> = HandshakeState::default();
-        let mut handshake_r: HandshakeState<A, H>  = HandshakeState::default();
+        let mut handshake_r: HandshakeState<A, H> = HandshakeState::default();
         assert!(handshake_i.is_reset());
         assert!(handshake_r.is_reset());
-        
-        let prologue = generate_random_payload(&payload_size_range);
-        handshake_i.initialize(&mut OsRng, protocol_name, true, once(prologue.as_ref()), key_init_static_secret.as_ref(), init_rs.as_ref()).unwrap();
-        handshake_r.initialize(&mut OsRng, protocol_name, false, once(prologue.as_ref()), key_resp_static_secret.as_ref(), resp_rs.as_ref()).unwrap();
 
-        assert_eq!(handshake_i.current_handshake_hash(), handshake_r.current_handshake_hash(), "handshake hash diverged at premessage {handshake_info}");
+        let prologue = generate_random_payload(&payload_size_range);
+        handshake_i
+            .initialize(
+                &mut OsRng,
+                protocol_name,
+                true,
+                once(prologue.as_ref()),
+                key_init_static_secret.as_ref(),
+                init_rs.as_ref(),
+            )
+            .unwrap();
+        handshake_r
+            .initialize(
+                &mut OsRng,
+                protocol_name,
+                false,
+                once(prologue.as_ref()),
+                key_resp_static_secret.as_ref(),
+                resp_rs.as_ref(),
+            )
+            .unwrap();
+
+        assert_eq!(
+            handshake_i.current_handshake_hash(),
+            handshake_r.current_handshake_hash(),
+            "handshake hash diverged at premessage {handshake_info}"
+        );
 
         assert!(handshake_i.is_initiator());
         assert!(!handshake_r.is_initiator());
@@ -950,7 +1144,11 @@ mod tests {
             let message = handshake_write.write_message_vec(&payload).unwrap();
             let res = handshake_read.read_message_vec(&message);
 
-            assert_eq!(handshake_i.current_handshake_hash(), handshake_r.current_handshake_hash(), "handshake hash diverged at step {step} {handshake_info}");
+            assert_eq!(
+                handshake_i.current_handshake_hash(),
+                handshake_r.current_handshake_hash(),
+                "handshake hash diverged at step {step} {handshake_info}"
+            );
             assert_eq!(payload, res.unwrap());
 
             let ask_label = HYPHAE_KEY_ASK_LABEL;
@@ -968,11 +1166,21 @@ mod tests {
         }
 
         assert!(handshake_r.is_complete());
-        assert_eq!(handshake_i.remote_static(), key_resp_static_public.as_ref().map(PublicKey::as_ref));
-        assert_eq!(handshake_r.remote_static(), key_init_static_public.as_ref().map(PublicKey::as_ref));
+        assert_eq!(
+            handshake_i.remote_static(),
+            key_resp_static_public.as_ref().map(PublicKey::as_ref)
+        );
+        assert_eq!(
+            handshake_r.remote_static(),
+            key_init_static_public.as_ref().map(PublicKey::as_ref)
+        );
     }
 
-    fn compare_handshake_with_snow<A: AeadBackend, H: HashBackend> (protocol_name: &str, initiator: bool, payload_size_range: Range<usize>) {
+    fn compare_handshake_with_snow<A: AeadBackend, H: HashBackend>(
+        protocol_name: &str,
+        initiator: bool,
+        payload_size_range: Range<usize>,
+    ) {
         let handshake_info = format!("({protocol_name} {initiator} {payload_size_range:?})");
 
         let (handshake_params, _, _, _) = parse_protocol_name(protocol_name).unwrap();
@@ -982,29 +1190,46 @@ mod tests {
             true => (init_auth, resp_auth),
             false => (resp_auth, init_auth),
         };
-        let handshake_static_secret =
-            handshake_auth.then(|| SecretKey::new_from_rng(&mut OsRng));
-        let snow_static_secret =
-            snow_auth.then(|| SecretKey::new_from_rng(&mut OsRng));
-        
+        let handshake_static_secret = handshake_auth.then(|| SecretKey::new_from_rng(&mut OsRng));
+        let snow_static_secret = snow_auth.then(|| SecretKey::new_from_rng(&mut OsRng));
+
         let handshake_desc = handshake_params.pattern().handshake_desc();
         let (handshake_premessages, snow_premessages) = match initiator {
-            true => (handshake_desc.pre_message_init, handshake_desc.pre_message_resp),
-            false => (handshake_desc.pre_message_resp, handshake_desc.pre_message_init),
+            true => (
+                handshake_desc.pre_message_init,
+                handshake_desc.pre_message_resp,
+            ),
+            false => (
+                handshake_desc.pre_message_resp,
+                handshake_desc.pre_message_init,
+            ),
         };
-        let handshake_rs = matches!(snow_premessages, PreMessageTokens::S).then(|| snow_static_secret.as_ref().unwrap().public());
-        let snow_rs = matches!(handshake_premessages, PreMessageTokens::S).then(|| handshake_static_secret.as_ref().unwrap().public());
+        let handshake_rs = matches!(snow_premessages, PreMessageTokens::S)
+            .then(|| snow_static_secret.as_ref().unwrap().public());
+        let snow_rs = matches!(handshake_premessages, PreMessageTokens::S)
+            .then(|| handshake_static_secret.as_ref().unwrap().public());
 
         let prologue = generate_random_payload(&payload_size_range);
 
         let mut handshake: HandshakeState<A, H> = HandshakeState::default();
         assert!(handshake.is_reset());
-        handshake.initialize(&mut OsRng, protocol_name, initiator, once(prologue.as_ref()), handshake_static_secret.as_ref(), handshake_rs.as_ref()).unwrap();
+        handshake
+            .initialize(
+                &mut OsRng,
+                protocol_name,
+                initiator,
+                once(prologue.as_ref()),
+                handshake_static_secret.as_ref(),
+                handshake_rs.as_ref(),
+            )
+            .unwrap();
 
-        let mut builder_snow = snow::Builder::new(protocol_name.parse().unwrap()).prologue(&prologue);
+        let mut builder_snow =
+            snow::Builder::new(protocol_name.parse().unwrap()).prologue(&prologue);
         if let Some(s) = &snow_static_secret {
             builder_snow = builder_snow.local_private_key(s.as_bytes());
-        }if let Some(rs) = &snow_rs {
+        }
+        if let Some(rs) = &snow_rs {
             builder_snow = builder_snow.remote_public_key(rs.as_ref());
         }
         let mut handshake_snow = match initiator {
@@ -1012,7 +1237,11 @@ mod tests {
             false => builder_snow.build_initiator().unwrap(),
         };
 
-        assert_eq!(handshake.current_handshake_hash(), handshake_snow.get_handshake_hash(), "handshake hash diverged at premessage {handshake_info}");
+        assert_eq!(
+            handshake.current_handshake_hash(),
+            handshake_snow.get_handshake_hash(),
+            "handshake hash diverged at premessage {handshake_info}"
+        );
         assert_eq!(handshake.is_initiator(), initiator);
         assert_ne!(handshake_snow.is_initiator(), initiator);
 
@@ -1028,18 +1257,30 @@ mod tests {
                 let mut payload_recv = vec![0u8; payload.len()];
                 let res = handshake_snow.read_message(&message, &mut payload_recv);
 
-                assert_eq!(handshake.current_handshake_hash(), handshake_snow.get_handshake_hash(), "handshake hash diverged at step {step}, our turn {handshake_info}");
+                assert_eq!(
+                    handshake.current_handshake_hash(),
+                    handshake_snow.get_handshake_hash(),
+                    "handshake hash diverged at step {step}, our turn {handshake_info}"
+                );
                 assert_eq!(payload.len(), res.unwrap());
                 assert_eq!(payload, payload_recv);
-
             } else {
                 let message_len = handshake.next_message_length() + payload.len();
                 // Snow needs space for a payload tag even if it doesn't need to write one.
                 let mut message = vec![0u8; message_len + 16];
-                assert_eq!(handshake_snow.write_message(&payload, &mut message).unwrap(), message_len);
+                assert_eq!(
+                    handshake_snow
+                        .write_message(&payload, &mut message)
+                        .unwrap(),
+                    message_len
+                );
                 let res = handshake.read_message_vec(&message[0..message_len]);
-                
-                assert_eq!(handshake.current_handshake_hash(), handshake_snow.get_handshake_hash(), "handshake hash diverged at step {step}, snow's turn {handshake_info}");
+
+                assert_eq!(
+                    handshake.current_handshake_hash(),
+                    handshake_snow.get_handshake_hash(),
+                    "handshake hash diverged at step {step}, snow's turn {handshake_info}"
+                );
                 assert_eq!(payload, res.unwrap());
             }
 
@@ -1047,9 +1288,23 @@ mod tests {
         }
 
         assert!(handshake_snow.is_handshake_finished());
-        assert_eq!(handshake.remote_static(), snow_static_secret.as_ref().map(SecretKey::public).as_ref().map(PublicKey::as_ref));
-        assert_eq!(handshake_snow.get_remote_static(), handshake_static_secret.as_ref().map(SecretKey::public).as_ref().map(PublicKey::as_ref));
-        
+        assert_eq!(
+            handshake.remote_static(),
+            snow_static_secret
+                .as_ref()
+                .map(SecretKey::public)
+                .as_ref()
+                .map(PublicKey::as_ref)
+        );
+        assert_eq!(
+            handshake_snow.get_remote_static(),
+            handshake_static_secret
+                .as_ref()
+                .map(SecretKey::public)
+                .as_ref()
+                .map(PublicKey::as_ref)
+        );
+
         handshake_snow.into_transport_mode().unwrap();
     }
 }
